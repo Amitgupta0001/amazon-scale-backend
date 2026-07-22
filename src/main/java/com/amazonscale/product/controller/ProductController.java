@@ -4,6 +4,8 @@ import com.amazonscale.product.dto.ProductRequest;
 import com.amazonscale.product.dto.ProductResponse;
 import com.amazonscale.product.service.ProductService;
 
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -11,7 +13,10 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
-
+@Tag(
+        name = "Products",
+        description = "Product Management APIs"
+)
 @RestController  // this tell the spring that this class handles REST API requests
 @RequestMapping("/api/v1/products")  // this tells that every endpoint in this controller starts with /api/v1/products;
 public class ProductController {
@@ -23,6 +28,7 @@ public class ProductController {
     }
 
     //CREATE PRODUCT
+    @Operation(summary = "Create a new product")
     @PostMapping
     public ResponseEntity<ProductResponse> createProduct(
             @Valid @RequestBody ProductRequest request){
@@ -33,6 +39,7 @@ public class ProductController {
     }
 
     //GET PRODUCT BY ID
+    @Operation(summary = "Get product using Id")
     @GetMapping("/{id}")
     public ResponseEntity<ProductResponse> getProduct(
             @PathVariable final Long id){
@@ -40,12 +47,14 @@ public class ProductController {
     }
 
     //GET ALL PRODUCTS
+    @Operation(summary = "Get all products")
     @GetMapping
     public ResponseEntity<List<ProductResponse>> getAllProducts(){
         return ResponseEntity.ok(productService.getAllProducts());
     }
 
     //UPDATE PRODUCT
+    @Operation(summary = "Updating product using Id")
     @PutMapping("/{id}")
     public ResponseEntity<ProductResponse> updateProduct(
             @PathVariable Long id,
@@ -55,6 +64,7 @@ public class ProductController {
     }
 
     //DELETE PRODUCT
+    @Operation(summary = "Deleting product using Id")
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteProduct(@PathVariable Long id){
         productService.deleteProduct(id);
