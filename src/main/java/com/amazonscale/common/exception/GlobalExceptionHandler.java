@@ -2,6 +2,7 @@ package com.amazonscale.common.exception;
 
 import com.amazonscale.common.response.ErrorResponse;
 import com.amazonscale.product.exception.ProductNotFoundException;
+import com.amazonscale.user.exception.EmailAlreadyExistsException;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -47,6 +48,22 @@ public class GlobalExceptionHandler {
                 ));
         return ResponseEntity.badRequest().body(errors);
     }
+
+    @ExceptionHandler(EmailAlreadyExistsException.class)
+    public ResponseEntity<ErrorResponse> handleEmailAlreadyExists(
+            EmailAlreadyExistsException ex,
+            HttpServletRequest request){
+        ErrorResponse error = new ErrorResponse(
+                LocalDateTime.now(),
+                HttpStatus.CONFLICT.value(),
+                HttpStatus.CONFLICT.getReasonPhrase(),
+                ex.getMessage(),
+                request.getRequestURI()
+        );
+
+        return  ResponseEntity.status(HttpStatus.CONFLICT).body(error);
+    }
+
 
 
 }
