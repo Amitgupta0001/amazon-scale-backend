@@ -1,6 +1,9 @@
 package com.amazonscale.common.exception;
 
 import com.amazonscale.common.response.ErrorResponse;
+import com.amazonscale.inventory.exception.InsufficientStockException;
+import com.amazonscale.inventory.exception.InventoryAlreadyExistsException;
+import com.amazonscale.inventory.exception.InventoryNotFoundException;
 import com.amazonscale.product.exception.ProductNotFoundException;
 import com.amazonscale.user.exception.EmailAlreadyExistsException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -112,4 +115,39 @@ public class GlobalExceptionHandler {
         );
     }
 
+    @ExceptionHandler(InventoryNotFoundException.class)
+    public ResponseEntity<ErrorResponse> handleInventoryNotFound(
+            InventoryNotFoundException ex,
+            HttpServletRequest request) {
+
+        return buildErrorResponse(
+                HttpStatus.NOT_FOUND,
+                ex.getMessage(),
+                request
+        );
+    }
+
+    @ExceptionHandler(InventoryAlreadyExistsException.class)
+    public ResponseEntity<ErrorResponse> handleInventoryAlreadyExists(
+            InventoryAlreadyExistsException ex,
+            HttpServletRequest request) {
+
+        return buildErrorResponse(
+                HttpStatus.CONFLICT,
+                ex.getMessage(),
+                request
+        );
+    }
+
+    @ExceptionHandler(InsufficientStockException.class)
+    public ResponseEntity<ErrorResponse> handleInsufficientStock(
+            InsufficientStockException ex,
+            HttpServletRequest request) {
+
+        return buildErrorResponse(
+                HttpStatus.BAD_REQUEST,
+                ex.getMessage(),
+                request
+        );
+    }
 }
