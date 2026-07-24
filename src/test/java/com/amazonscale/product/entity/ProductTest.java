@@ -2,87 +2,56 @@ package com.amazonscale.product.entity;
 
 import org.junit.jupiter.api.Test;
 
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
+
 import static org.junit.jupiter.api.Assertions.*;
 
 class ProductTest {
 
     @Test
-    void prePersist() {
+    void testProductBuilderAndGettersSetters() {
+        // Arrange
+        LocalDateTime now = LocalDateTime.now();
+
+        // Act
+        Product product = Product.builder()
+                .id(10L)
+                .name("Camera")
+                .description("DSLR Camera")
+                .price(new BigDecimal("999.99"))
+                .stock(5)
+                .brand("CamBrand")
+                .active(true)
+                .createdAt(now)
+                .updatedAt(now)
+                .build();
+
+        // Assert
+        assertEquals(10L, product.getId());
+        assertEquals("Camera", product.getName());
+        assertEquals("DSLR Camera", product.getDescription());
+        assertEquals(new BigDecimal("999.99"), product.getPrice());
+        assertEquals(5, product.getStock());
+        assertEquals("CamBrand", product.getBrand());
+        assertTrue(product.getActive());
+        assertEquals(now, product.getCreatedAt());
+        assertEquals(now, product.getUpdatedAt());
     }
 
     @Test
-    void preUpdate() {
-    }
+    void testPrePersistAndPreUpdate() {
+        // Arrange
+        Product product = new Product();
 
-    @Test
-    void getId() {
-    }
+        // Act
+        product.prePersist();
 
-    @Test
-    void getName() {
-    }
+        // Assert
+        assertNotNull(product.getCreatedAt());
+        assertNotNull(product.getUpdatedAt());
 
-    @Test
-    void getDescription() {
-    }
-
-    @Test
-    void getPrice() {
-    }
-
-    @Test
-    void getStock() {
-    }
-
-    @Test
-    void getBrand() {
-    }
-
-    @Test
-    void getActive() {
-    }
-
-    @Test
-    void getCreatedAt() {
-    }
-
-    @Test
-    void getUpdatedAt() {
-    }
-
-    @Test
-    void setId() {
-    }
-
-    @Test
-    void setName() {
-    }
-
-    @Test
-    void setDescription() {
-    }
-
-    @Test
-    void setPrice() {
-    }
-
-    @Test
-    void setStock() {
-    }
-
-    @Test
-    void setBrand() {
-    }
-
-    @Test
-    void setActive() {
-    }
-
-    @Test
-    void setCreatedAt() {
-    }
-
-    @Test
-    void setUpdatedAt() {
+        product.preUpdate();
+        assertNotNull(product.getUpdatedAt());
     }
 }

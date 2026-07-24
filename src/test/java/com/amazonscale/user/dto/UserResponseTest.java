@@ -1,68 +1,37 @@
 package com.amazonscale.user.dto;
 
+import com.amazonscale.user.entity.Role;
 import org.junit.jupiter.api.Test;
+
+import java.time.LocalDateTime;
 
 import static org.junit.jupiter.api.Assertions.*;
 
 class UserResponseTest {
 
     @Test
-    void getId() {
-    }
+    void testUserResponseBuilderAndGettersSetters() {
+        // Arrange
+        LocalDateTime now = LocalDateTime.now();
 
-    @Test
-    void getFirstName() {
-    }
+        // Act
+        UserResponse response = UserResponse.builder()
+                .id(1L)
+                .firstName("Alice")
+                .lastName("Smith")
+                .email("alice@example.com")
+                .role(Role.ADMIN)
+                .enabled(true)
+                .createdAt(now)
+                .build();
 
-    @Test
-    void getLastName() {
-    }
-
-    @Test
-    void getEmail() {
-    }
-
-    @Test
-    void getRole() {
-    }
-
-    @Test
-    void isEnabled() {
-    }
-
-    @Test
-    void getCreatedAt() {
-    }
-
-    @Test
-    void setId() {
-    }
-
-    @Test
-    void setFirstName() {
-    }
-
-    @Test
-    void setLastName() {
-    }
-
-    @Test
-    void setEmail() {
-    }
-
-    @Test
-    void setRole() {
-    }
-
-    @Test
-    void setEnabled() {
-    }
-
-    @Test
-    void setCreatedAt() {
-    }
-
-    @Test
-    void builder() {
+        // Assert
+        assertEquals(1L, response.getId());
+        assertEquals("Alice", response.getFirstName());
+        assertEquals("Smith", response.getLastName());
+        assertEquals("alice@example.com", response.getEmail());
+        assertEquals(Role.ADMIN, response.getRole());
+        assertTrue(response.isEnabled());
+        assertEquals(now, response.getCreatedAt());
     }
 }

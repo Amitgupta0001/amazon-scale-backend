@@ -7,6 +7,12 @@ import static org.junit.jupiter.api.Assertions.*;
 class ProductNotFoundExceptionTest {
 
     @Test
-    void builder() {
+    void shouldCreateExceptionWithId() {
+        // Act
+        ProductNotFoundException exception = new ProductNotFoundException(42L);
+
+        // Assert
+        assertNotNull(exception);
+        assertEquals("Product not found with id :42", exception.getMessage());
     }
 }

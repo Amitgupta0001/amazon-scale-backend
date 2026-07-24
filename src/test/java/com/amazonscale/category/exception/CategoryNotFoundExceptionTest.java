@@ -7,6 +7,12 @@ import static org.junit.jupiter.api.Assertions.*;
 class CategoryNotFoundExceptionTest {
 
     @Test
-    void builder() {
+    void shouldCreateExceptionWithId() {
+        // Act
+        CategoryNotFoundException exception = new CategoryNotFoundException(15L);
+
+        // Assert
+        assertNotNull(exception);
+        assertEquals("Category not found with id: 15", exception.getMessage());
     }
 }

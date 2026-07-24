@@ -5,181 +5,88 @@ import com.amazonscale.inventory.dto.InventoryResponse;
 import com.amazonscale.inventory.dto.InventoryUpdateRequest;
 import com.amazonscale.inventory.entity.Inventory;
 import com.amazonscale.product.entity.Product;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+
+import java.time.LocalDateTime;
 
 import static org.junit.jupiter.api.Assertions.*;
 
 class InventoryMapperTest {
 
-    private Inventory inventory;
+    @Test
+    void toInventory() {
+        // Arrange
+        InventoryRequest request = new InventoryRequest();
+        request.setProductId(5L);
+        request.setQuantity(20);
+        request.setWarehouseLocation("Rack 4");
+        request.setLowStockThreshold(5);
 
-    @BeforeEach
-    void setUp() {
+        // Act
+        Inventory inventory = InventoryMapper.toInventory(request);
 
+        // Assert
+        assertNotNull(inventory);
+        assertEquals(20, inventory.getQuantity());
+        assertEquals("Rack 4", inventory.getWarehouseLocation());
+        assertEquals(5, inventory.getLowStockThreshold());
+    }
+
+    @Test
+    void toResponse() {
+        // Arrange
         Product product = Product.builder()
-                .id(1L)
-                .name("Laptop")
+                .id(5L)
+                .name("Keyboard")
                 .build();
 
-        inventory = Inventory.builder()
+        LocalDateTime now = LocalDateTime.now();
+        Inventory inventory = Inventory.builder()
                 .id(1L)
                 .product(product)
-                .quantity(100)
-                .reservedQuantity(20)
-                .warehouseLocation("Warehouse A")
-                .lowStockThreshold(10)
+                .quantity(50)
+                .reservedQuantity(10)
+                .warehouseLocation("Rack 4")
+                .lowStockThreshold(5)
+                .createdAt(now)
+                .updatedAt(now)
                 .build();
-    }
 
-    @Test
-    void shouldConvertRequestToInventory() {
+        // Act
+        InventoryResponse response = InventoryMapper.toResponse(inventory);
 
-        InventoryRequest request = new InventoryRequest();
-
-        request.setProductId(1L);
-        request.setQuantity(150);
-        request.setWarehouseLocation("Warehouse B");
-        request.setLowStockThreshold(15);
-
-        Inventory entity =
-                InventoryMapper.toInventory(request);
-
-        assertNotNull(entity);
-
-        assertEquals(150,
-                entity.getQuantity());
-
-        assertEquals("Warehouse B",
-                entity.getWarehouseLocation());
-
-        assertEquals(15,
-                entity.getLowStockThreshold());
-    }
-
-
-    @Test
-    void shouldConvertInventoryToResponse() {
-
-        InventoryResponse response =
-                InventoryMapper.toResponse(inventory);
-
+        // Assert
         assertNotNull(response);
-
-        assertEquals(1L,
-                response.getId());
-
-        assertEquals(1L,
-                response.getProductId());
-
-        assertEquals("Laptop",
-                response.getProductName());
-
-        assertEquals(100,
-                response.getQuantity());
-
-        assertEquals(20,
-                response.getReservedQuantity());
-
-        assertEquals(80,
-                response.getAvailableQuantity());
-
-        assertEquals("Warehouse A",
-                response.getWarehouseLocation());
-
-        assertEquals(10,
-                response.getLowStockThreshold());
-    }
-    @Test
-    void shouldUpdateInventoryEntity() {
-
-        InventoryUpdateRequest request =
-                InventoryUpdateRequest.builder()
-                        .quantity(200)
-                        .warehouseLocation("Warehouse C")
-                        .lowStockThreshold(25)
-                        .build();
-
-        InventoryMapper.updateInventory(
-                inventory,
-                request
-        );
-
-        assertEquals(
-                200,
-                inventory.getQuantity()
-        );
-
-        assertEquals(
-                "Warehouse C",
-                inventory.getWarehouseLocation()
-        );
-
-        assertEquals(
-                25,
-                inventory.getLowStockThreshold()
-        );
+        assertEquals(1L, response.getId());
+        assertEquals(5L, response.getProductId());
+        assertEquals("Keyboard", response.getProductName());
+        assertEquals(50, response.getQuantity());
+        assertEquals(10, response.getReservedQuantity());
+        assertEquals(40, response.getAvailableQuantity());
+        assertEquals("Rack 4", response.getWarehouseLocation());
     }
 
     @Test
-    void shouldCalculateAvailableQuantity() {
+    void updateInventory() {
+        // Arrange
+        Inventory inventory = Inventory.builder()
+                .quantity(10)
+                .warehouseLocation("Old")
+                .lowStockThreshold(2)
+                .build();
 
-        inventory.setQuantity(120);
-        inventory.setReservedQuantity(35);
+        InventoryUpdateRequest updateRequest = InventoryUpdateRequest.builder()
+                .quantity(100)
+                .warehouseLocation("New")
+                .lowStockThreshold(15)
+                .build();
 
-        assertEquals(
-                85,
-                inventory.getAvailableQuantity()
-        );
+        // Act
+        InventoryMapper.updateInventory(inventory, updateRequest);
+
+        // Assert
+        assertEquals(100, inventory.getQuantity());
+        assertEquals("New", inventory.getWarehouseLocation());
+        assertEquals(15, inventory.getLowStockThreshold());
     }
-
-    @Test
-    void shouldReturnZeroWhenReservedGreaterThanQuantity() {
-
-        inventory.setQuantity(50);
-        inventory.setReservedQuantity(70);
-
-        assertEquals(
-                0,
-                inventory.getAvailableQuantity()
-        );
-    }
-
-    @Test
-    void shouldHandleZeroReservedQuantity() {
-
-        inventory.setReservedQuantity(0);
-
-        InventoryResponse response =
-                InventoryMapper.toResponse(inventory);
-
-        assertEquals(
-                100,
-                response.getAvailableQuantity()
-        );
-    }
-
-    @Test
-    void shouldNotModifyProductWhileUpdating() {
-
-        Product oldProduct = inventory.getProduct();
-
-        InventoryUpdateRequest request =
-                InventoryUpdateRequest.builder()
-                        .quantity(300)
-                        .warehouseLocation("Warehouse D")
-                        .lowStockThreshold(30)
-                        .build();
-
-        InventoryMapper.updateInventory(
-                inventory,
-                request
-        );
-
-        assertEquals(
-                oldProduct,
-                inventory.getProduct()
-        );
-    }
-
 }

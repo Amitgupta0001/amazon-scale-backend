@@ -2,71 +2,52 @@ package com.amazonscale.category.entity;
 
 import org.junit.jupiter.api.Test;
 
+import java.time.LocalDateTime;
+
 import static org.junit.jupiter.api.Assertions.*;
 
 class CategoryTest {
 
     @Test
-    void prePersist() {
+    void testCategoryBuilderAndGettersSetters() {
+        // Arrange
+        LocalDateTime now = LocalDateTime.now();
+        Category parent = Category.builder().id(1L).name("Root").build();
+
+        // Act
+        Category category = Category.builder()
+                .id(2L)
+                .name("SubCategory")
+                .description("Desc")
+                .imageUrl("http://example.com/img.png")
+                .parentCategory(parent)
+                .createdAt(now)
+                .updatedAt(now)
+                .build();
+
+        // Assert
+        assertEquals(2L, category.getId());
+        assertEquals("SubCategory", category.getName());
+        assertEquals("Desc", category.getDescription());
+        assertEquals("http://example.com/img.png", category.getImageUrl());
+        assertEquals(parent, category.getParentCategory());
+        assertEquals(now, category.getCreatedAt());
+        assertEquals(now, category.getUpdatedAt());
     }
 
     @Test
-    void preUpdate() {
-    }
+    void testPrePersistAndPreUpdate() {
+        // Arrange
+        Category category = new Category();
 
-    @Test
-    void getId() {
-    }
+        // Act
+        category.prePersist();
 
-    @Test
-    void getName() {
-    }
+        // Assert
+        assertNotNull(category.getCreatedAt());
+        assertNotNull(category.getUpdatedAt());
 
-    @Test
-    void getDescription() {
-    }
-
-    @Test
-    void getImageUrl() {
-    }
-
-    @Test
-    void getParentCategory() {
-    }
-
-    @Test
-    void getCreatedAt() {
-    }
-
-    @Test
-    void getUpdatedAt() {
-    }
-
-    @Test
-    void setId() {
-    }
-
-    @Test
-    void setName() {
-    }
-
-    @Test
-    void setDescription() {
-    }
-
-    @Test
-    void setImageUrl() {
-    }
-
-    @Test
-    void setParentCategory() {
-    }
-
-    @Test
-    void setCreatedAt() {
-    }
-
-    @Test
-    void setUpdatedAt() {
+        category.preUpdate();
+        assertNotNull(category.getUpdatedAt());
     }
 }

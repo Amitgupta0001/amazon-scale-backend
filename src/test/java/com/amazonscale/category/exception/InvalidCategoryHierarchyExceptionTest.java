@@ -7,6 +7,12 @@ import static org.junit.jupiter.api.Assertions.*;
 class InvalidCategoryHierarchyExceptionTest {
 
     @Test
-    void builder() {
+    void shouldCreateExceptionWithDefaultMessage() {
+        // Act
+        InvalidCategoryHierarchyException exception = new InvalidCategoryHierarchyException();
+
+        // Assert
+        assertNotNull(exception);
+        assertEquals("A category cannot be its own parent.", exception.getMessage());
     }
 }

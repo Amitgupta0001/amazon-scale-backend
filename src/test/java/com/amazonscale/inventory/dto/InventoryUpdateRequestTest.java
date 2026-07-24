@@ -7,30 +7,33 @@ import static org.junit.jupiter.api.Assertions.*;
 class InventoryUpdateRequestTest {
 
     @Test
-    void getQuantity() {
+    void testInventoryUpdateRequestBuilderAndGetters() {
+        // Act
+        InventoryUpdateRequest request = InventoryUpdateRequest.builder()
+                .quantity(75)
+                .warehouseLocation("Location C")
+                .lowStockThreshold(12)
+                .build();
+
+        // Assert
+        assertEquals(75, request.getQuantity());
+        assertEquals("Location C", request.getWarehouseLocation());
+        assertEquals(12, request.getLowStockThreshold());
     }
 
     @Test
-    void getWarehouseLocation() {
-    }
+    void testSetters() {
+        // Arrange
+        InventoryUpdateRequest request = new InventoryUpdateRequest();
 
-    @Test
-    void getLowStockThreshold() {
-    }
+        // Act
+        request.setQuantity(30);
+        request.setWarehouseLocation("Location D");
+        request.setLowStockThreshold(8);
 
-    @Test
-    void setQuantity() {
-    }
-
-    @Test
-    void setWarehouseLocation() {
-    }
-
-    @Test
-    void setLowStockThreshold() {
-    }
-
-    @Test
-    void builder() {
+        // Assert
+        assertEquals(30, request.getQuantity());
+        assertEquals("Location D", request.getWarehouseLocation());
+        assertEquals(8, request.getLowStockThreshold());
     }
 }

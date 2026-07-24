@@ -7,22 +7,16 @@ import static org.junit.jupiter.api.Assertions.*;
 class LoginRequestTest {
 
     @Test
-    void getEmail() {
-    }
+    void testGettersAndSetters() {
+        // Arrange
+        LoginRequest request = new LoginRequest();
 
-    @Test
-    void setEmail() {
-    }
+        // Act
+        request.setEmail("user@example.com");
+        request.setPassword("secret123");
 
-    @Test
-    void getPassword() {
-    }
-
-    @Test
-    void setPassword() {
-    }
-
-    @Test
-    void builder() {
+        // Assert
+        assertEquals("user@example.com", request.getEmail());
+        assertEquals("secret123", request.getPassword());
     }
 }

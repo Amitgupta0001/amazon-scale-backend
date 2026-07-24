@@ -1,8 +1,5 @@
 package com.amazonscale.inventory.exception;
 
-import lombok.Builder;
-
-@Builder
 public class InventoryNotFoundException extends RuntimeException {
 
     public InventoryNotFoundException(Long id) {

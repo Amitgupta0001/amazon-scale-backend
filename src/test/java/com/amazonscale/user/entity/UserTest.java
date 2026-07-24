@@ -2,91 +2,55 @@ package com.amazonscale.user.entity;
 
 import org.junit.jupiter.api.Test;
 
+import java.time.LocalDateTime;
+
 import static org.junit.jupiter.api.Assertions.*;
 
 class UserTest {
 
     @Test
-    void onCreate() {
+    void testUserBuilderAndGettersSetters() {
+        // Arrange
+        LocalDateTime now = LocalDateTime.now();
+
+        // Act
+        User user = User.builder()
+                .id(1L)
+                .firstName("John")
+                .lastName("Doe")
+                .email("john@example.com")
+                .password("encoded_pass")
+                .role(Role.ADMIN)
+                .enabled(true)
+                .createdAt(now)
+                .updatedAt(now)
+                .build();
+
+        // Assert
+        assertEquals(1L, user.getId());
+        assertEquals("John", user.getFirstName());
+        assertEquals("Doe", user.getLastName());
+        assertEquals("john@example.com", user.getEmail());
+        assertEquals("encoded_pass", user.getPassword());
+        assertEquals(Role.ADMIN, user.getRole());
+        assertTrue(user.isEnabled());
+        assertEquals(now, user.getCreatedAt());
+        assertEquals(now, user.getUpdatedAt());
     }
 
     @Test
-    void onUpdate() {
-    }
+    void testPrePersistAndPreUpdate() {
+        // Arrange
+        User user = new User(1L, "A", "B", "a@b.com", "pass", Role.CUSTOMER, true, null, null);
 
-    @Test
-    void getId() {
-    }
+        // Act
+        user.onCreate();
 
-    @Test
-    void getFirstName() {
-    }
+        // Assert
+        assertNotNull(user.getCreatedAt());
+        assertNotNull(user.getUpdatedAt());
 
-    @Test
-    void getLastName() {
-    }
-
-    @Test
-    void getEmail() {
-    }
-
-    @Test
-    void getPassword() {
-    }
-
-    @Test
-    void getRole() {
-    }
-
-    @Test
-    void isEnabled() {
-    }
-
-    @Test
-    void getCreatedAt() {
-    }
-
-    @Test
-    void getUpdatedAt() {
-    }
-
-    @Test
-    void setId() {
-    }
-
-    @Test
-    void setFirstName() {
-    }
-
-    @Test
-    void setLastName() {
-    }
-
-    @Test
-    void setEmail() {
-    }
-
-    @Test
-    void setPassword() {
-    }
-
-    @Test
-    void setRole() {
-    }
-
-    @Test
-    void setEnabled() {
-    }
-
-    @Test
-    void setCreatedAt() {
-    }
-
-    @Test
-    void setUpdatedAt() {
-    }
-
-    @Test
-    void builder() {
+        user.onUpdate();
+        assertNotNull(user.getUpdatedAt());
     }
 }

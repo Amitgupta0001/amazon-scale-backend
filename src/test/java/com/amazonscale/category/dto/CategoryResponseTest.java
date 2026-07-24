@@ -2,67 +2,35 @@ package com.amazonscale.category.dto;
 
 import org.junit.jupiter.api.Test;
 
+import java.time.LocalDateTime;
+
 import static org.junit.jupiter.api.Assertions.*;
 
 class CategoryResponseTest {
 
     @Test
-    void getId() {
-    }
+    void testCategoryResponseBuilderAndGettersSetters() {
+        // Arrange
+        LocalDateTime now = LocalDateTime.now();
 
-    @Test
-    void getName() {
-    }
+        // Act
+        CategoryResponse response = CategoryResponse.builder()
+                .id(1L)
+                .name("Toys")
+                .description("Kids toys")
+                .imageUrl("http://example.com/toys.png")
+                .parentCategoryId(3L)
+                .createdAt(now)
+                .updatedAt(now)
+                .build();
 
-    @Test
-    void getDescription() {
-    }
-
-    @Test
-    void getImageUrl() {
-    }
-
-    @Test
-    void getParentCategoryId() {
-    }
-
-    @Test
-    void getCreatedAt() {
-    }
-
-    @Test
-    void getUpdatedAt() {
-    }
-
-    @Test
-    void setId() {
-    }
-
-    @Test
-    void setName() {
-    }
-
-    @Test
-    void setDescription() {
-    }
-
-    @Test
-    void setImageUrl() {
-    }
-
-    @Test
-    void setParentCategoryId() {
-    }
-
-    @Test
-    void setCreatedAt() {
-    }
-
-    @Test
-    void setUpdatedAt() {
-    }
-
-    @Test
-    void builder() {
+        // Assert
+        assertEquals(1L, response.getId());
+        assertEquals("Toys", response.getName());
+        assertEquals("Kids toys", response.getDescription());
+        assertEquals("http://example.com/toys.png", response.getImageUrl());
+        assertEquals(3L, response.getParentCategoryId());
+        assertEquals(now, response.getCreatedAt());
+        assertEquals(now, response.getUpdatedAt());
     }
 }
