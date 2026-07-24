@@ -8,9 +8,10 @@ import com.amazonscale.user.exception.EmailAlreadyExistsException;
 import com.amazonscale.user.mapper.UserMapper;
 import com.amazonscale.user.repository.UserRepository;
 import com.amazonscale.user.service.UserService;
+import lombok.Builder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
-
+@Builder
 @Service
 public class UserServiceImpl implements UserService {
 

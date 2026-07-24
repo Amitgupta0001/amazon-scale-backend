@@ -11,11 +11,13 @@ import com.amazonscale.category.exception.InvalidCategoryHierarchyException;
 import com.amazonscale.category.mapper.CategoryMapper;
 import com.amazonscale.category.repository.CategoryRepository;
 import com.amazonscale.category.service.CategoryService;
+import lombok.Builder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
+@Builder
 @Service
 @Transactional
 public class CategoryServiceImpl implements CategoryService {

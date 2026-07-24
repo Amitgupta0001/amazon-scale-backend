@@ -8,11 +8,13 @@ import com.amazonscale.product.mapper.ProductMapper;
 import com.amazonscale.product.repository.ProductRepository;
 import com.amazonscale.product.service.ProductService;
 
+import lombok.Builder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
+@Builder
 @Service
 @Transactional
 public class ProductServiceImpl implements ProductService{

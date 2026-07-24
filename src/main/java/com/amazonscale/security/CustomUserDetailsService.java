@@ -2,10 +2,12 @@ package com.amazonscale.security;
 
 import com.amazonscale.user.entity.User;
 import com.amazonscale.user.repository.UserRepository;
+import lombok.Builder;
 import org.springframework.security.core.userdetails.*;
 import org.springframework.stereotype.Service;
 
 @Service
+@Builder
 public class CustomUserDetailsService implements UserDetailsService {
 
     private final UserRepository userRepository;

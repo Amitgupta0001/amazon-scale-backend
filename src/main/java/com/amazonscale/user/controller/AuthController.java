@@ -4,9 +4,10 @@ import com.amazonscale.user.dto.LoginRequest;
 import com.amazonscale.user.dto.LoginResponse;
 import com.amazonscale.user.service.AuthService;
 import jakarta.validation.Valid;
+import lombok.Builder;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-
+@Builder
 @RestController
 @RequestMapping("/api/v1/auth")
 public class AuthController {

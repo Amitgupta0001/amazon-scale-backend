@@ -4,6 +4,7 @@
 package com.amazonscale.security;
 
 import io.jsonwebtoken.Jwts;
+import lombok.Builder;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import io.jsonwebtoken.io.Decoders;
@@ -16,6 +17,7 @@ import java.util.function.Function;
 import javax.crypto.SecretKey;
 import java.util.Date;
 
+@Builder
 @Service
 public class JwtService {
 

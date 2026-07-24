@@ -8,6 +8,7 @@ import com.amazonscale.category.service.CategoryService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import lombok.Builder;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -19,6 +20,7 @@ import java.util.List;
         name = "Categories",
         description = "Category Management APIs"
 )
+@Builder
 @RequiredArgsConstructor
 @RestController
 @RequestMapping("/api/v1/categories")

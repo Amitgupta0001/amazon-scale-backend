@@ -1,17 +1,16 @@
 package com.amazonscale.product.entity;
 
 import jakarta.persistence.*;  // contains Entity,Table,Id,GeneratedValue and Column basically everything related to JPA
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
+import lombok.*;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 @Getter
 @Setter
+@Builder
+@AllArgsConstructor
 @NoArgsConstructor
-
 @Entity
 @Table(name = "products")
 public class Product {

@@ -3,7 +3,9 @@ package com.amazonscale.category.mapper;
 import com.amazonscale.category.dto.CategoryResponse;
 import com.amazonscale.category.dto.CreateCategoryRequest;
 import com.amazonscale.category.entity.Category;
+import lombok.Builder;
 
+@Builder
 public final class CategoryMapper {
 
     private CategoryMapper() {

@@ -7,6 +7,7 @@ import com.amazonscale.product.service.ProductService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import lombok.Builder;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -17,6 +18,7 @@ import java.util.List;
         name = "Products",
         description = "Product Management APIs"
 )
+@Builder
 @RestController  // this tell the spring that this class handles REST API requests
 @RequestMapping("/api/v1/products")  // this tells that every endpoint in this controller starts with /api/v1/products;
 public class ProductController {

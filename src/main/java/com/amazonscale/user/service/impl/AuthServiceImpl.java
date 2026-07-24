@@ -5,11 +5,12 @@ import com.amazonscale.security.JwtService;
 import com.amazonscale.user.dto.LoginRequest;
 import com.amazonscale.user.dto.LoginResponse;
 import com.amazonscale.user.service.AuthService;
+import lombok.Builder;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
-
+@Builder
 @Service
 public class AuthServiceImpl implements AuthService {
 

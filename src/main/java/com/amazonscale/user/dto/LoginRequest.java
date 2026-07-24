@@ -2,7 +2,9 @@ package com.amazonscale.user.dto;
 
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
+import lombok.Builder;
 
+@Builder
 public class LoginRequest {
 
     @Email(message = "Invalid email")

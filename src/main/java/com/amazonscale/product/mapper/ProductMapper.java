@@ -3,6 +3,9 @@ package com.amazonscale.product.mapper;
 import com.amazonscale.product.dto.ProductRequest;
 import com.amazonscale.product.dto.ProductResponse;
 import com.amazonscale.product.entity.Product;
+import lombok.Builder;
+
+@Builder
 public final class ProductMapper {
     public static Product toEntity(ProductRequest request){
 

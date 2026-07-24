@@ -3,7 +3,9 @@ package com.amazonscale.user.mapper;
 import com.amazonscale.user.dto.UserRequest;
 import com.amazonscale.user.dto.UserResponse;
 import com.amazonscale.user.entity.User;
+import lombok.Builder;
 
+@Builder
 public class UserMapper {
 
     private UserMapper(){

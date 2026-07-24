@@ -1,5 +1,8 @@
 package com.amazonscale.user.dto;
 
+import lombok.Builder;
+
+@Builder
 public class LoginResponse {
 
     private String accessToken;
