@@ -59,6 +59,7 @@ class ProductControllerTest {
         ProductRequest request = new ProductRequest();
         request.setName("Smartphone");
         request.setDescription("Latest smartphone");
+        request.setImageUrl("https://example.com/image.jpg");
         request.setPrice(new BigDecimal("699.99"));
         request.setStock(50);
         request.setBrand("TechBrand");
@@ -74,6 +75,20 @@ class ProductControllerTest {
                 .andExpect(jsonPath("$.name").value("Smartphone"));
 
         verify(productService, times(1)).createProduct(any(ProductRequest.class));
+    }
+
+    @Test
+    void testCreateProductValidationError() throws Exception {
+        // Arrange - missing required fields
+        ProductRequest request = new ProductRequest();
+
+        // Act & Assert
+        mockMvc.perform(post("/api/v1/products")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest());
+
+        verify(productService, never()).createProduct(any(ProductRequest.class));
     }
 
     @Test
@@ -110,6 +125,7 @@ class ProductControllerTest {
         ProductRequest request = new ProductRequest();
         request.setName("Smartphone Pro");
         request.setDescription("Pro model");
+        request.setImageUrl("https://example.com/image.jpg");
         request.setPrice(new BigDecimal("899.99"));
         request.setStock(40);
         request.setBrand("TechBrand");

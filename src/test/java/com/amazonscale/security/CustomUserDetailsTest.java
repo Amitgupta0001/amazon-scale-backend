@@ -2,87 +2,55 @@ package com.amazonscale.security;
 
 import com.amazonscale.user.entity.Role;
 import com.amazonscale.user.entity.User;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.security.core.GrantedAuthority;
 
-import java.time.LocalDateTime;
 import java.util.Collection;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.assertj.core.api.Assertions.assertThat;
 
 class CustomUserDetailsTest {
 
-    private User user;
-    private CustomUserDetails customUserDetails;
-
-    @BeforeEach
-    void setUp() {
-        user = User.builder()
+    @Test
+    void testCustomUserDetailsProperties() {
+        User user = User.builder()
                 .id(1L)
-                .firstName("John")
-                .lastName("Doe")
-                .email("john.doe@example.com")
+                .email("john@example.com")
                 .password("encoded_password")
-                .role(Role.ADMIN)
+                .role(Role.CUSTOMER)
                 .enabled(true)
-                .createdAt(LocalDateTime.now())
-                .updatedAt(LocalDateTime.now())
                 .build();
 
-        customUserDetails = new CustomUserDetails(user);
+        CustomUserDetails userDetails = new CustomUserDetails(user);
+
+        assertThat(userDetails.getUser()).isEqualTo(user);
+        assertThat(userDetails.getUsername()).isEqualTo("john@example.com");
+        assertThat(userDetails.getPassword()).isEqualTo("encoded_password");
+        assertThat(userDetails.isAccountNonExpired()).isTrue();
+        assertThat(userDetails.isAccountNonLocked()).isTrue();
+        assertThat(userDetails.isCredentialsNonExpired()).isTrue();
+        assertThat(userDetails.isEnabled()).isTrue();
+
+        Collection<? extends GrantedAuthority> authorities = userDetails.getAuthorities();
+        assertThat(authorities).hasSize(1);
+        assertThat(authorities.iterator().next().getAuthority()).isEqualTo("CUSTOMER");
     }
 
     @Test
-    void shouldReturnCorrectAuthorities() {
-        // Act
-        Collection<? extends GrantedAuthority> authorities = customUserDetails.getAuthorities();
+    void testCustomUserDetailsBuilder() {
+        User user = User.builder()
+                .id(2L)
+                .email("admin@example.com")
+                .password("admin_pass")
+                .role(Role.ADMIN)
+                .enabled(false)
+                .build();
 
-        // Assert
-        assertNotNull(authorities);
-        assertEquals(1, authorities.size());
-        assertEquals("ADMIN", authorities.iterator().next().getAuthority());
-    }
+        CustomUserDetails userDetails = CustomUserDetails.builder()
+                .user(user)
+                .build();
 
-    @Test
-    void shouldReturnCorrectPassword() {
-        // Act & Assert
-        assertEquals("encoded_password", customUserDetails.getPassword());
-    }
-
-    @Test
-    void shouldReturnCorrectUsername() {
-        // Act & Assert
-        assertEquals("john.doe@example.com", customUserDetails.getUsername());
-    }
-
-    @Test
-    void shouldReturnAccountNonExpiredAsTrue() {
-        // Act & Assert
-        assertTrue(customUserDetails.isAccountNonExpired());
-    }
-
-    @Test
-    void shouldReturnAccountNonLockedAsTrue() {
-        // Act & Assert
-        assertTrue(customUserDetails.isAccountNonLocked());
-    }
-
-    @Test
-    void shouldReturnCredentialsNonExpiredAsTrue() {
-        // Act & Assert
-        assertTrue(customUserDetails.isCredentialsNonExpired());
-    }
-
-    @Test
-    void shouldReturnEnabledStatus() {
-        // Act & Assert
-        assertTrue(customUserDetails.isEnabled());
-    }
-
-    @Test
-    void shouldReturnWrappedUser() {
-        // Act & Assert
-        assertEquals(user, customUserDetails.getUser());
+        assertThat(userDetails.getUsername()).isEqualTo("admin@example.com");
+        assertThat(userDetails.isEnabled()).isFalse();
     }
 }
