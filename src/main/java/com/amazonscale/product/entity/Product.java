@@ -25,6 +25,9 @@ public class Product {
     @Column(columnDefinition = "TEXT")
     private String description; // here hibernate creates a TEXT
 
+    @Column(nullable = false,length = 1000)
+    private String imageUrl; // image url
+
     @Column(nullable = false,precision = 10,scale = 2)
     private BigDecimal price; // BigDecimal stores values precisely and scale = 2 means two digit after decimal
 

@@ -1,5 +1,6 @@
 package com.amazonscale.product.dto;
 
+import jakarta.persistence.Column;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.PositiveOrZero;
@@ -24,6 +25,10 @@ public class ProductRequest {
     @NotBlank(message = "Description is required")
     @Size(max = 1000,message = "Description cannot exceed 1000 characters")
     private String description;
+
+    @NotBlank(message = "Image is required")
+    @Size(max = 1000,message = "Url cannot exceed 1000 characters")
+    private String imageUrl;
 
     @Positive(message = "Price must be greater than zero")
     private BigDecimal price;

@@ -1,5 +1,8 @@
 package com.amazonscale.common.exception;
 
+import com.amazonscale.cart.exception.CartItemNotFoundException;
+import com.amazonscale.cart.exception.CartNotFoundException;
+import com.amazonscale.cart.exception.InvalidQuantityException;
 import com.amazonscale.common.response.ErrorResponse;
 import com.amazonscale.inventory.exception.InsufficientStockException;
 import com.amazonscale.inventory.exception.InventoryAlreadyExistsException;
@@ -150,4 +153,41 @@ public class GlobalExceptionHandler {
                 request
         );
     }
+
+    @ExceptionHandler(CartNotFoundException.class)
+    public ResponseEntity<ErrorResponse> handleCartNotFound(
+            CartNotFoundException ex,
+            HttpServletRequest request) {
+
+        return buildErrorResponse(
+                HttpStatus.NOT_FOUND,
+                ex.getMessage(),
+                request
+        );
+    }
+
+    @ExceptionHandler(CartItemNotFoundException.class)
+    public ResponseEntity<ErrorResponse> handleCartItemNotFound(
+            CartItemNotFoundException ex,
+            HttpServletRequest request) {
+
+        return buildErrorResponse(
+                HttpStatus.NOT_FOUND,
+                ex.getMessage(),
+                request
+        );
+    }
+
+    @ExceptionHandler(InvalidQuantityException.class)
+    public ResponseEntity<ErrorResponse> handleInvalidQuantity(
+            InvalidQuantityException ex,
+            HttpServletRequest request) {
+
+        return buildErrorResponse(
+                HttpStatus.BAD_REQUEST,
+                ex.getMessage(),
+                request
+        );
+    }
+
 }
