@@ -7,9 +7,14 @@ import com.amazonscale.common.response.ErrorResponse;
 import com.amazonscale.inventory.exception.InsufficientStockException;
 import com.amazonscale.inventory.exception.InventoryAlreadyExistsException;
 import com.amazonscale.inventory.exception.InventoryNotFoundException;
+import com.amazonscale.order.exception.EmptyCartException;
+import com.amazonscale.order.exception.InvalidOrderStatusTransitionException;
+import com.amazonscale.order.exception.OrderNotFoundException;
+import com.amazonscale.product.exception.ProductInactiveException;
 import com.amazonscale.product.exception.ProductNotFoundException;
 import com.amazonscale.user.exception.EmailAlreadyExistsException;
 import jakarta.servlet.http.HttpServletRequest;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -24,6 +29,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.time.LocalDateTime;
 
+@Slf4j
 @RestControllerAdvice  //This makes the exception handler available to all controllers in  application.
 public class GlobalExceptionHandler {
 
@@ -186,6 +192,75 @@ public class GlobalExceptionHandler {
         return buildErrorResponse(
                 HttpStatus.BAD_REQUEST,
                 ex.getMessage(),
+                request
+        );
+    }
+
+    // OrderNotFoundException
+    @ExceptionHandler(OrderNotFoundException.class)
+    public ResponseEntity<ErrorResponse> handleOrderNotFound(
+            OrderNotFoundException ex,
+            HttpServletRequest request) {
+
+        return buildErrorResponse(
+                HttpStatus.NOT_FOUND,
+                ex.getMessage(),
+                request
+        );
+    }
+
+    // EmptyCartException
+
+    @ExceptionHandler(EmptyCartException.class)
+    public ResponseEntity<ErrorResponse> handleEmptyCart(
+            EmptyCartException ex,
+            HttpServletRequest request) {
+
+        return buildErrorResponse(
+                HttpStatus.BAD_REQUEST,
+                ex.getMessage(),
+                request
+        );
+    }
+
+    //InvalidOrderStatusTransitionException
+    @ExceptionHandler(InvalidOrderStatusTransitionException.class)
+    public ResponseEntity<ErrorResponse> handleInvalidOrderStatusTransition(
+            InvalidOrderStatusTransitionException ex,
+            HttpServletRequest request) {
+
+        return buildErrorResponse(
+                HttpStatus.BAD_REQUEST,
+                ex.getMessage(),
+                request
+        );
+    }
+
+    // ProductInactiveException
+
+    @ExceptionHandler(ProductInactiveException.class)
+    public ResponseEntity<ErrorResponse> handleProductInactive(
+            ProductInactiveException ex,
+            HttpServletRequest request) {
+
+        return buildErrorResponse(
+                HttpStatus.BAD_REQUEST,
+                ex.getMessage(),
+                request
+        );
+    }
+
+    // for Unexpected or Catch exception
+    @ExceptionHandler(Exception.class)
+    public ResponseEntity<ErrorResponse> handleGenericException(
+            Exception ex,
+            HttpServletRequest request) {
+
+        log.error("Unexpected exception", ex);
+
+        return buildErrorResponse(
+                HttpStatus.INTERNAL_SERVER_ERROR,
+                "An unexpected error occurred.",
                 request
         );
     }
