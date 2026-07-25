@@ -1,10 +1,6 @@
-// To generate a JWT , we need 1.A secret key 2.Token Expiration
-//3. method to generate the token 4.method to validate and parse it
-
 package com.amazonscale.security;
 
 import io.jsonwebtoken.Jwts;
-import lombok.Builder;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import io.jsonwebtoken.io.Decoders;
@@ -17,15 +13,19 @@ import java.util.function.Function;
 import javax.crypto.SecretKey;
 import java.util.Date;
 
-@Builder
 @Service
 public class JwtService {
 
-    @Value("${jwt.secret}")
-    private String secretKey;
+    private final String secretKey;
+    private final Long jwtExpiration;
 
-    @Value("${jwt.expiration}")
-    private Long jwtExpiration;
+    public JwtService(
+            @Value("${jwt.secret}") String secretKey,
+            @Value("${jwt.expiration}") Long jwtExpiration
+    ) {
+        this.secretKey = secretKey;
+        this.jwtExpiration = jwtExpiration;
+    }
 
     private SecretKey getSigningKey(){
         byte[] keyBytes = Decoders.BASE64.decode(secretKey);  //A secure JWT secret is usually stored as a Base64-encoded string
