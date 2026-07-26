@@ -1,6 +1,6 @@
 package com.amazonscale.user.dto;
 
-import com.amazonscale.user.entity.Role;
+import com.amazonscale.user.enums.Role;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.*;

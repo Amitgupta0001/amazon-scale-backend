@@ -1,6 +1,6 @@
 package com.amazonscale.security;
 
-import com.amazonscale.user.entity.Role;
+import com.amazonscale.user.enums.Role;
 import com.amazonscale.user.entity.User;
 import io.jsonwebtoken.JwtException;
 import jakarta.servlet.FilterChain;

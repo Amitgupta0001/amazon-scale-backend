@@ -2,7 +2,7 @@ package com.amazonscale.user.mapper;
 
 import com.amazonscale.user.dto.UserRequest;
 import com.amazonscale.user.dto.UserResponse;
-import com.amazonscale.user.entity.Role;
+import com.amazonscale.user.enums.Role;
 import com.amazonscale.user.entity.User;
 import org.junit.jupiter.api.Test;
 

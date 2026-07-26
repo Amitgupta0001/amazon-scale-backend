@@ -1,6 +1,6 @@
 package com.amazonscale.security;
 
-import com.amazonscale.user.entity.Role;
+import com.amazonscale.user.enums.Role;
 import com.amazonscale.user.entity.User;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;

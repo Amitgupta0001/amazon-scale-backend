@@ -4,7 +4,7 @@ import com.amazonscale.security.CustomUserDetails;
 import com.amazonscale.security.JwtService;
 import com.amazonscale.user.dto.LoginRequest;
 import com.amazonscale.user.dto.LoginResponse;
-import com.amazonscale.user.entity.Role;
+import com.amazonscale.user.enums.Role;
 import com.amazonscale.user.entity.User;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;

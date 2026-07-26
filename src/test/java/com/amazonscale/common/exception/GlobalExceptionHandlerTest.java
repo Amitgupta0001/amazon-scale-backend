@@ -13,6 +13,9 @@ import com.amazonscale.inventory.exception.InventoryNotFoundException;
 import com.amazonscale.order.exception.EmptyCartException;
 import com.amazonscale.order.exception.InvalidOrderStatusTransitionException;
 import com.amazonscale.order.exception.OrderNotFoundException;
+import com.amazonscale.payment.exception.InvalidPaymentException;
+import com.amazonscale.payment.exception.PaymentFailedException;
+import com.amazonscale.payment.exception.PaymentNotFoundException;
 import com.amazonscale.product.exception.ProductInactiveException;
 import com.amazonscale.product.exception.ProductNotFoundException;
 import com.amazonscale.user.exception.EmailAlreadyExistsException;
@@ -137,7 +140,8 @@ class GlobalExceptionHandlerTest {
 
     @Test
     void handleOrderNotFound() {
-        OrderNotFoundException ex = new OrderNotFoundException("Order not found with id: 100");
+        Long orderId = 100L;
+        OrderNotFoundException ex = new OrderNotFoundException(orderId);
         ResponseEntity<ErrorResponse> response = exceptionHandler.handleOrderNotFound(ex, request);
         assertErrorResponse(response, HttpStatus.NOT_FOUND, ex.getMessage());
     }
@@ -187,5 +191,26 @@ class GlobalExceptionHandlerTest {
         ResponseEntity<ErrorResponse> response = exceptionHandler.handleGenericException(ex, request);
 
         assertErrorResponse(response, HttpStatus.INTERNAL_SERVER_ERROR, "An unexpected error occurred.");
+    }
+
+    @Test
+    void handlePaymentNotFoundException() {
+        PaymentNotFoundException ex = new PaymentNotFoundException("Payment not found");
+        ResponseEntity<ErrorResponse> response = exceptionHandler.handlePaymentNotFoundException(ex, request);
+        assertErrorResponse(response, HttpStatus.NOT_FOUND, "Payment not found");
+    }
+
+    @Test
+    void handleInvalidPaymentException() {
+        InvalidPaymentException ex = new InvalidPaymentException("Invalid payment state");
+        ResponseEntity<ErrorResponse> response = exceptionHandler.handleInvalidPaymentException(ex, request);
+        assertErrorResponse(response, HttpStatus.BAD_REQUEST, "Invalid payment state");
+    }
+
+    @Test
+    void handlePaymentFailedException() {
+        PaymentFailedException ex = new PaymentFailedException("Payment failed");
+        ResponseEntity<ErrorResponse> response = exceptionHandler.handlePaymentFailedException(ex, request);
+        assertErrorResponse(response, HttpStatus.PAYMENT_REQUIRED, "Payment failed");
     }
 }

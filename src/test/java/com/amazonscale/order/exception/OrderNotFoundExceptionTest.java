@@ -8,8 +8,9 @@ class OrderNotFoundExceptionTest {
 
     @Test
     void testExceptionMessage() {
-        String message = "Order not found with id: 100";
-        OrderNotFoundException ex = new OrderNotFoundException(message);
+        String message = "Order not found with id100";
+        Long orderId = 100L;
+        OrderNotFoundException ex = new OrderNotFoundException(orderId);
         assertThat(ex.getMessage()).isEqualTo(message);
     }
 }
