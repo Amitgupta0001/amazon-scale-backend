@@ -1,5 +1,6 @@
 package com.amazonscale.user.entity;
 
+import com.amazonscale.user.enums.Role;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;

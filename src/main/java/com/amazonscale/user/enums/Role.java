@@ -1,4 +1,4 @@
-package com.amazonscale.user.entity;
+package com.amazonscale.user.enums;
 
 public enum Role {
     ADMIN,

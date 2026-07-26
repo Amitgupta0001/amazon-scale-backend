@@ -1,7 +1,7 @@
 // this is what the client receives
 
 package com.amazonscale.user.dto;
-import com.amazonscale.user.entity.Role;
+import com.amazonscale.user.enums.Role;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;

@@ -10,6 +10,9 @@ import com.amazonscale.inventory.exception.InventoryNotFoundException;
 import com.amazonscale.order.exception.EmptyCartException;
 import com.amazonscale.order.exception.InvalidOrderStatusTransitionException;
 import com.amazonscale.order.exception.OrderNotFoundException;
+import com.amazonscale.payment.exception.InvalidPaymentException;
+import com.amazonscale.payment.exception.PaymentFailedException;
+import com.amazonscale.payment.exception.PaymentNotFoundException;
 import com.amazonscale.product.exception.ProductInactiveException;
 import com.amazonscale.product.exception.ProductNotFoundException;
 import com.amazonscale.user.exception.EmailAlreadyExistsException;
@@ -263,6 +266,59 @@ public class GlobalExceptionHandler {
                 "An unexpected error occurred.",
                 request
         );
+    }
+
+    //PaymentNotFoundException
+
+    @ExceptionHandler(PaymentNotFoundException.class)
+    public ResponseEntity<ErrorResponse> handlePaymentNotFoundException(
+            PaymentNotFoundException ex,
+            HttpServletRequest request) {
+
+        ErrorResponse error = ErrorResponse.builder()
+                .timestamp(LocalDateTime.now())
+                .status(HttpStatus.NOT_FOUND.value())
+                .error(HttpStatus.NOT_FOUND.getReasonPhrase())
+                .message(ex.getMessage())
+                .path(request.getRequestURI())
+                .build();
+
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(error);
+    }
+
+    // InvalidPaymentException
+
+    @ExceptionHandler(InvalidPaymentException.class)
+    public ResponseEntity<ErrorResponse> handleInvalidPaymentException(
+            InvalidPaymentException ex,
+            HttpServletRequest request) {
+
+        ErrorResponse error = ErrorResponse.builder()
+                .timestamp(LocalDateTime.now())
+                .status(HttpStatus.BAD_REQUEST.value())
+                .error(HttpStatus.BAD_REQUEST.getReasonPhrase())
+                .message(ex.getMessage())
+                .path(request.getRequestURI())
+                .build();
+
+        return ResponseEntity.badRequest().body(error);
+    }
+
+    //PaymentFailedException
+    @ExceptionHandler(PaymentFailedException.class)
+    public ResponseEntity<ErrorResponse> handlePaymentFailedException(
+            PaymentFailedException ex,
+            HttpServletRequest request) {
+
+        ErrorResponse error = ErrorResponse.builder()
+                .timestamp(LocalDateTime.now())
+                .status(HttpStatus.PAYMENT_REQUIRED.value())
+                .error(HttpStatus.PAYMENT_REQUIRED.getReasonPhrase())
+                .message(ex.getMessage())
+                .path(request.getRequestURI())
+                .build();
+
+        return ResponseEntity.status(HttpStatus.PAYMENT_REQUIRED).body(error);
     }
 
 }

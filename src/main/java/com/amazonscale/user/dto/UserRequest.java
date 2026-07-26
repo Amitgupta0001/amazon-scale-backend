@@ -2,7 +2,7 @@
 
 package com.amazonscale.user.dto;
 
-import com.amazonscale.user.entity.Role;
+import com.amazonscale.user.enums.Role;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;

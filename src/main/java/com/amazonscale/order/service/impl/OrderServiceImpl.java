@@ -194,7 +194,7 @@ public class OrderServiceImpl implements OrderService {
     public OrderResponse getOrder(Long userId, Long orderId) {
         Order order = orderRepository
                 .findByIdAndUser_Id(orderId, userId)
-                .orElseThrow(() -> new OrderNotFoundException("Order not found with id: " + orderId));
+                .orElseThrow(() -> new OrderNotFoundException(orderId));
         return OrderMapper.toOrderResponse(order);
     }
 
@@ -214,8 +214,7 @@ public class OrderServiceImpl implements OrderService {
         Order order = orderRepository
                 .findByIdAndUser_Id(orderId, userId)
                 .orElseThrow(() ->
-                        new OrderNotFoundException(
-                                "Order not found with id: " + orderId));
+                        new OrderNotFoundException(orderId));
 
         if (order.getStatus() == OrderStatus.DELIVERED) {
             throw new InvalidOrderStatusTransitionException(
@@ -235,7 +234,7 @@ public class OrderServiceImpl implements OrderService {
     @Override
     public OrderResponse updateOrderStatus(Long orderId, OrderStatus newStatus) {
         Order order = orderRepository.findById(orderId)
-                .orElseThrow(() -> new OrderNotFoundException("Order not found with id: " + orderId));
+                .orElseThrow(() -> new OrderNotFoundException(orderId));
 
         OrderStatus currentStatus = order.getStatus();
 

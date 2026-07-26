@@ -1,8 +1,10 @@
 package com.amazonscale.common.response;
 
-import org.springframework.cglib.core.Local;
+import lombok.Builder;
+
 
 import java.time.LocalDateTime;
+@Builder
 public class ErrorResponse {
 
     private LocalDateTime timestamp;

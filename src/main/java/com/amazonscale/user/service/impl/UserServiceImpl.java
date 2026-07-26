@@ -2,7 +2,7 @@ package com.amazonscale.user.service.impl;
 
 import com.amazonscale.user.dto.UserRequest;
 import com.amazonscale.user.dto.UserResponse;
-import com.amazonscale.user.entity.Role;
+import com.amazonscale.user.enums.Role;
 import com.amazonscale.user.entity.User;
 import com.amazonscale.user.exception.EmailAlreadyExistsException;
 import com.amazonscale.user.mapper.UserMapper;
