@@ -1,465 +1,220 @@
-# User Module
+# User Module Specification
 
 ---
 
-## Related Documentation
-
-- [Documentation Index](README.md)
-- [Architecture Overview](Architecture.md)
-- [Security Architecture](Security.md)
-- [Database Schema Specification](Database-Schema.md)
-- [REST API Specification](API-Design.md)
+## 1. Overview
+The **User Module** handles user identity management, account registration, BCrypt credential hashing, role definitions, and authentication payload exchange for the **AmazonScale** e-commerce platform.
 
 ---
 
-## Overview
-
-The User module manages identity, registration, and authentication for the AmazonScale e-commerce platform. It provides public endpoints for user registration and JWT-based authentication, manages user roles (`ADMIN`, `SELLER`, `CUSTOMER`), and enforces BCrypt password hashing.
-
-**Package root:** `com.amazonscale.user`
+## 2. Purpose
+Provides core identity services required for client authentication, authorization enforcement, and entity association (ownership of products, carts, orders, payments, and wishlists).
 
 ---
 
-## Features
-
-- **User Registration**: Register new user accounts with email uniqueness check and BCrypt password encryption (`POST /api/v1/auth/register`).
-- **User Authentication (Login)**: Authenticate user credentials and issue JWT bearer tokens (`POST /api/v1/auth/login`).
-- **Role Assignment**: Supports user roles (`ADMIN`, `SELLER`, `CUSTOMER`), defaulting new self-registrations to `CUSTOMER`.
-- **Soft Enablement**: Tracks account active status (`enabled = true`) to preserve historical user data on account deactivation.
-- **Automatic Timestamping**: Entity creation and update timestamps managed via `@PrePersist` and `@PreUpdate` callbacks.
+## 3. Architecture
+The User module follows the package-by-feature model, isolating user controllers, services, repositories, entities, DTOs, mappers, and exceptions inside `com.amazonscale.user`.
 
 ---
 
-## Architecture
-
-```
-Client
-  │
-  │ HTTP Requests (Public Auth Endpoints)
-  v
-AuthController / UserController   (@RestController, @RequestMapping("/api/v1/auth"))
-  │
-  ├── Login ───> AuthService / AuthServiceImpl ──> AuthenticationManager + JwtService ──> JWT Token
-  │
-  └── Register ─> UserService / UserServiceImpl ──> PasswordEncoder + UserRepository ───> Saved User
-  │
-  v
-Database (users table)
-```
-
----
-
-## Package Structure
-
+## 4. Package Structure
 ```
 com.amazonscale.user
 ├── controller
-│   ├── AuthController.java                  REST endpoint for authentication (login)
-│   └── UserController.java                  REST endpoint for registration
+│   ├── AuthController.java
+│   └── UserController.java
 ├── dto
-│   ├── LoginRequest.java                    Inbound DTO for user login credentials
-│   ├── LoginResponse.java                   Outbound DTO containing JWT bearer token
-│   ├── UserRequest.java                     Inbound DTO for user registration
-│   └── UserResponse.java                    Outbound DTO for user account details
+│   ├── LoginRequest.java
+│   ├── LoginResponse.java
+│   ├── UserRequest.java
+│   └── UserResponse.java
 ├── entity
-│   └── User.java                            JPA entity for user account
+│   └── User.java
 ├── enums
-│   └── Role.java                            Enum representing user authorization roles
+│   └── Role.java
 ├── exception
-│   ├── EmailAlreadyExistsException.java     Thrown on registration with existing email
-│   └── UserNotFoundException.java          Thrown when user ID is not found
+│   ├── EmailAlreadyExistsException.java
+│   └── UserNotFoundException.java
 ├── mapper
-│   └── UserMapper.java                      Utility mapper for entity-DTO conversion
+│   └── UserMapper.java
 ├── repository
-│   └── UserRepository.java                  Spring Data JPA repository for users
+│   └── UserRepository.java
 └── service
-    ├── AuthService.java                     Authentication service interface
-    ├── UserService.java                     User service interface
+    ├── AuthService.java
+    ├── UserService.java
     └── impl
-        ├── AuthServiceImpl.java             Authentication service implementation
-        └── UserServiceImpl.java             User service implementation
+        ├── AuthServiceImpl.java
+        └── UserServiceImpl.java
 ```
 
 ---
 
-## Entities
-
-### User
-
-**Purpose:** Core identity entity representing platform users.
-
-**Table:** `users`
-
-| Field | Type | Constraints | Description |
-|-------|------|-------------|-------------|
-| `id` | `Long` | `@Id`, `@GeneratedValue(IDENTITY)` | Primary key |
-| `firstName` | `String` | `nullable = false, length = 50` | User's first name |
-| `lastName` | `String` | `nullable = false, length = 50` | User's last name |
-| `email` | `String` | `nullable = false, unique = true, length = 100` | Unique email address (login credential) |
-| `password` | `String` | `nullable = false, length = 255` | BCrypt encrypted password hash |
-| `role` | `Role` | `@Enumerated(STRING)`, `nullable = false` | Assigned user role |
-| `enabled` | `boolean` | `nullable = false`, default `true` | Account active flag |
-| `createdAt` | `LocalDateTime` | `nullable = false, updatable = false` | Account creation timestamp |
-| `updatedAt` | `LocalDateTime` | `nullable = false` | Account update timestamp |
-
-**Lifecycle Callbacks:**
-- `@PrePersist onCreate()`: Sets `createdAt` and `updatedAt` to `LocalDateTime.now()`.
-- `@PreUpdate onUpdate()`: Sets `updatedAt` to `LocalDateTime.now()`.
+## 5. Components
+- **`UserController`**: Handles account registration endpoint (`POST /api/v1/auth/register`).
+- **`AuthController`**: Handles login credential verification endpoint (`POST /api/v1/auth/login`).
+- **`UserServiceImpl`**: Encapsulates user registration logic, duplicate email checks, and BCrypt encoding.
+- **`AuthServiceImpl`**: Delegates credential authentication to `AuthenticationManager` and issues JWT tokens.
+- **`UserRepository`**: JPA repository interface for `users` table queries.
+- **`UserMapper`**: Converts `UserRequest` to `User` entity and `User` entity to `UserResponse`.
 
 ---
 
-## Enums
-
-### Role
-
-Enum defining authorization levels:
-
-| Role Value | Description |
-|------------|-------------|
-| `ADMIN` | Platform administrator with elevated permissions |
-| `SELLER` | Merchant/seller account managing products and inventory |
-| `CUSTOMER` | Regular buyer account (default assigned role) |
-
----
-
-## DTOs
-
-### UserRequest
-
-**Purpose:** Payload for registering a new user account.
-
-| Field | Type | Constraints | Description |
-|-------|------|-------------|-------------|
-| `firstName` | `String` | `@NotBlank(message = "First name is required")`, `@Size(max = 50)` | First name |
-| `lastName` | `String` | `@NotBlank(message = "Last name is required")`, `@Size(max = 50)` | Last name |
-| `email` | `String` | `@NotBlank`, `@Email(message = "Invalid email format")`, `@Size(max = 100)` | Unique email address |
-| `password` | `String` | `@NotBlank`, `@Size(min = 8, max = 100)` | Plain-text password (hashed by service) |
-| `role` | `Role` | None | Requested role (overridden to `CUSTOMER` by service) |
-
-**Used by:** `POST /api/v1/auth/register`
+## 6. Database Design
+- **Table Name**: `users`
+- **Primary Key**: `id` (`BIGINT`, Auto-Increment)
+- **Columns**:
+  - `id` BIGINT AUTO_INCREMENT PRIMARY KEY
+  - `first_name` VARCHAR(50) NOT NULL
+  - `last_name` VARCHAR(50) NOT NULL
+  - `email` VARCHAR(100) NOT NULL UNIQUE
+  - `password` VARCHAR(255) NOT NULL
+  - `role` VARCHAR(20) NOT NULL
+  - `enabled` BOOLEAN NOT NULL DEFAULT TRUE
+  - `created_at` DATETIME NOT NULL
+  - `updated_at` DATETIME NOT NULL
 
 ---
 
-### UserResponse
-
-**Purpose:** Response body returned after successful user registration.
-
-| Field | Type | Description |
-|-------|------|-------------|
-| `id` | `Long` | User ID |
-| `firstName` | `String` | First name |
-| `lastName` | `String` | Last name |
-| `email` | `String` | Registered email |
-| `role` | `Role` | Assigned role |
-| `enabled` | `boolean` | Account active status |
-| `createdAt` | `LocalDateTime` | Registration timestamp |
+## 7. Entity Relationships
+- `User` 1:1 `Cart` (`mappedBy = "user"`)
+- `User` 1:N `Order` (`mappedBy = "user"`)
+- `User` 1:N `Product` (`mappedBy = "seller"`)
+- `User` 1:N `Wishlist` (`mappedBy = "user"`)
 
 ---
 
-### LoginRequest
-
-**Purpose:** Payload for user login authentication.
-
-| Field | Type | Constraints | Description |
-|-------|------|-------------|-------------|
-| `email` | `String` | `@NotBlank(message = "Email is required")`, `@Email` | User email address |
-| `password` | `String` | `@NotBlank(message = "Password is required")` | Plain-text password |
-
-**Used by:** `POST /api/v1/auth/login`
+## 8. DTOs
+- **`UserRequest`**: Registration payload (`firstName`, `lastName`, `email`, `password`).
+- **`UserResponse`**: Safe public profile response (`id`, `firstName`, `lastName`, `email`, `role`, `enabled`, `createdAt`).
+- **`LoginRequest`**: Authentication payload (`email`, `password`).
+- **`LoginResponse`**: Access token response (`accessToken`, `tokenType`).
 
 ---
 
-### LoginResponse
-
-**Purpose:** Response body containing issued JWT access token.
-
-| Field | Type | Description |
-|-------|------|-------------|
-| `accessToken` | `String` | Signed JWT bearer token |
-| `tokenType` | `String` | Authorization scheme (`"Bearer"`) |
+## 9. Repository Layer
+- **`UserRepository`**: Extends `JpaRepository<User, Long>`.
+  - `Optional<User> findByEmail(String email)`
+  - `boolean existsByEmail(String email)`
 
 ---
 
-## Repository Layer
-
-### UserRepository
-
-Extends `JpaRepository<User, Long>`.
-
-| Method | Purpose | Used By |
-|--------|---------|---------|
-| `findByEmail(String email)` | Fetches user entity record by unique email address | `CustomUserDetailsService.loadUserByUsername`, `AuthServiceImpl.login` |
-| `existsByEmail(String email)` | Checks whether an email address is already registered in system | `UserServiceImpl.register` |
+## 10. Service Layer
+- **`UserService`**: `UserResponse register(UserRequest request)`
+- **`AuthService`**: `LoginResponse login(LoginRequest request)`
 
 ---
 
-## Mapper Layer
-
-### UserMapper
-
-Stateless utility class with private constructor throwing `UnsupportedOperationException`.
-
-#### `toEntity(UserRequest request) -> User`
-- Maps `firstName`, `lastName`, `email`, `password`, `role`.
-
-#### `toResponse(User user) -> UserResponse`
-- Maps `id`, `firstName`, `lastName`, `email`, `role`, `enabled`, `createdAt`.
+## 11. Controller Layer
+- `POST /api/v1/auth/register` -> `UserController.register()` -> HTTP `201 Created`
+- `POST /api/v1/auth/login` -> `AuthController.login()` -> HTTP `200 OK`
 
 ---
 
-## Service Layer
-
-### UserService (Interface)
-
-- `register(UserRequest request) -> UserResponse`
-
-### UserServiceImpl
-
-Annotated `@Service`, `@Builder`. Constructor-injected with `UserRepository` and `PasswordEncoder`.
-
-#### `register(UserRequest request) -> UserResponse`
-1. Checks if email exists via `userRepository.existsByEmail(request.getEmail())` (throws `EmailAlreadyExistsException` if exists).
-2. Converts request DTO to `User` entity via `UserMapper.toEntity`.
-3. Encrypts plain-text password: `user.setPassword(passwordEncoder.encode(request.getPassword()))`.
-4. Overrides role to `Role.CUSTOMER`: `user.setRole(Role.CUSTOMER)`.
-5. Saves user entity to database via `userRepository.save`.
-6. Returns mapped `UserResponse`.
+## 12. Business Rules
+1. **Email Uniqueness**: User registration rejects duplicate email addresses (`EmailAlreadyExistsException`).
+2. **Default Role**: Newly registered users are assigned `Role.CUSTOMER` by default.
+3. **Password Security**: Raw passwords are hashed using `BCryptPasswordEncoder` prior to database insertion.
+4. **Soft Account State**: `enabled = true` by default to support soft account disabling without removing transaction history.
 
 ---
 
-### AuthService (Interface)
-
-- `login(LoginRequest request) -> LoginResponse`
-
-### AuthServiceImpl
-
-Annotated `@Service`, `@Builder`. Constructor-injected with `AuthenticationManager` and `JwtService`.
-
-#### `login(LoginRequest request) -> LoginResponse`
-1. Authenticates credentials: `authenticationManager.authenticate(new UsernamePasswordAuthenticationToken(email, password))`.
-2. Extracts principal as `CustomUserDetails`: `(CustomUserDetails) authentication.getPrincipal()`.
-3. Generates signed JWT token: `jwtService.generateToken(userDetails)`.
-4. Returns `new LoginResponse(token, "Bearer")`.
+## 13. Validation
+- `email`: `@NotBlank`, `@Email`, max length 100.
+- `password`: `@NotBlank`, `@Size(min = 8, max = 100)`.
+- `firstName`: `@NotBlank`, max length 50.
+- `lastName`: `@NotBlank`, max length 50.
 
 ---
 
-## Controller Layer
-
-### UserController
-
-`@RestController` mapped to `/api/v1/auth`.
-
-| HTTP Method | Endpoint | Description | Request Body | Status Code | Response Body |
-|-------------|----------|-------------|--------------|-------------|---------------|
-| `POST` | `/api/v1/auth/register` | Register new user account | `@Valid UserRequest` | `201 Created` | `UserResponse` |
+## 14. Exception Handling
+- `EmailAlreadyExistsException` -> Mapped by `GlobalExceptionHandler` to HTTP `400 Bad Request`.
+- `UserNotFoundException` -> Mapped by `GlobalExceptionHandler` to HTTP `404 Not Found`.
+- `BadCredentialsException` -> Mapped to HTTP `401 Unauthorized`.
 
 ---
 
-### AuthController
-
-`@RestController` mapped to `/api/v1/auth`.
-
-| HTTP Method | Endpoint | Description | Request Body | Status Code | Response Body |
-|-------------|----------|-------------|--------------|-------------|---------------|
-| `POST` | `/api/v1/auth/login` | Authenticate user & issue JWT | `@Valid LoginRequest` | `200 OK` | `LoginResponse` |
+## 15. Security
+- Public endpoints: `/api/v1/auth/register`, `/api/v1/auth/login`.
+- Authentication relies on Spring Security `DaoAuthenticationProvider` and `CustomUserDetailsService`.
 
 ---
 
-## Business Rules
+## 16. API Reference
 
-| Rule | Description | Enforcement Location |
-|------|-------------|----------------------|
-| **Unique Email Requirement** | Email must be unique across all user accounts | `UserServiceImpl.register` & DB constraint |
-| **Password Encryption** | Passwords must be hashed using BCrypt before persistence | `UserServiceImpl.register` |
-| **Default Customer Role** | Public registrations are automatically assigned `Role.CUSTOMER` | `UserServiceImpl.register` |
-| **Soft Enablement** | Accounts default to `enabled = true` to preserve user history upon deactivation | `User.enabled` default value |
-| **Bearer Token Standard** | Authentication returns a JWT token with `"Bearer"` type | `AuthServiceImpl.login` |
+### `POST /api/v1/auth/register`
+- **Request**: `UserRequest`
+- **Response**: `201 Created` (`UserResponse`)
 
----
-
-## Validation Rules
-
-### DTO Level
-- `UserRequest`:
-  - `firstName`: `@NotBlank(message = "First name is required")`, `@Size(max = 50)`
-  - `lastName`: `@NotBlank(message = "Last name is required")`, `@Size(max = 50)`
-  - `email`: `@NotBlank(message = "Email is required")`, `@Email(message = "Invalid email format")`, `@Size(max = 100)`
-  - `password`: `@NotBlank(message = "Password is required")`, `@Size(min = 8, max = 100)`
-- `LoginRequest`:
-  - `email`: `@NotBlank(message = "Email is required")`, `@Email(message = "Invalid email")`
-  - `password`: `@NotBlank(message = "Password is required")`
+### `POST /api/v1/auth/login`
+- **Request**: `LoginRequest`
+- **Response**: `200 OK` (`LoginResponse`)
 
 ---
 
-## Exception Handling
-
-| Exception | HTTP Status | Thrown When | Handler |
-|-----------|-------------|-------------|---------|
-| `EmailAlreadyExistsException` | `409 CONFLICT` | Email already exists during registration | `GlobalExceptionHandler` |
-| `UserNotFoundException` | `404 NOT_FOUND` | User ID is not found | `GlobalExceptionHandler` |
-| `BadCredentialsException` | `401 UNAUTHORIZED` | Invalid email or password during login | `Spring Security` / `GlobalExceptionHandler` |
+## 17. Request Flow
+HTTP Client Request -> Controller `@Valid` DTO Check -> Service Logic -> UserRepository DB Execution -> Mapper Entity-to-DTO Conversion -> HTTP Response Payload.
 
 ---
 
-## Security
-
-- **Public Endpoints**: `/api/v1/auth/**` endpoints are permitted without authentication in `SecurityConfig`.
-- **JWT Generation**: Integrates with `JwtService` to sign tokens carrying user identity claims.
-- **Security Context**: Integrates with `CustomUserDetails` via `AuthenticationManager`.
-
----
-
-## Request Lifecycle
-
-End-to-end execution flow for User Registration and Authentication requests:
-
-```
-Client
-   ↓
-JWT Filter (Permits /api/v1/auth/** without token check)
-   ↓
-Controller (UserController / AuthController receiving @Valid request payload)
-   ↓
-Validation (JSR-303 annotations check field constraints & throw on violation)
-   ↓
-Service (UserServiceImpl / AuthServiceImpl executing business logic)
-   ↓
-Mapper (UserMapper converting DTO to Entity or Entity to Response)
-   ↓
-Repository (UserRepository querying or inserting record via Spring Data JPA)
-   ↓
-Database (PostgreSQL / MySQL users table persistence)
-   ↓
-Response (201 Created with UserResponse OR 200 OK with LoginResponse JWT)
-```
-
----
-
-## Database Design
-
-### Table: `users`
-
-```sql
-CREATE TABLE users (
-    id BIGINT AUTO_INCREMENT PRIMARY KEY,
-    first_name VARCHAR(50) NOT NULL,
-    last_name VARCHAR(50) NOT NULL,
-    email VARCHAR(100) NOT NULL UNIQUE,
-    password VARCHAR(255) NOT NULL,
-    role VARCHAR(255) NOT NULL,
-    enabled BOOLEAN NOT NULL DEFAULT TRUE,
-    created_at DATETIME NOT NULL,
-    updated_at DATETIME NOT NULL
-);
-```
-
----
-
-## Testing
-
-**Test Suite Coverage Summary:** 13 test classes in `src/test/java/com/amazonscale/user` (573 total lines of code):
-
-| Component | Test Class | Coverage Description |
-|-----------|------------|----------------------|
-| **Controllers** | `UserControllerTest`, `AuthControllerTest` | MockMvc integration tests for registration and login endpoints. |
-| **Services** | `UserServiceImplTest`, `AuthServiceImplTest` | Unit tests for user registration, BCrypt encoding, email duplicate checks, authentication, and JWT token issuance. |
-| **Mapper** | `UserMapperTest` | DTO-entity conversion tests and utility class enforcement test. |
-| **DTOs** | `UserRequestTest`, `UserResponseTest`, `LoginRequestTest`, `LoginResponseTest` | Validation constraints, builder, and getter/setter tests. |
-| **Entity & Enum** | `UserTest`, `RoleTest` | Entity builder, timestamp callback, and enum value tests. |
-| **Exceptions** | `EmailAlreadyExistsExceptionTest`, `UserNotFoundExceptionTest` | Exception message assertion tests. |
-
-### Test Type Status
-
-| Test Type | Status |
-|-----------|--------|
-| DTO Tests | ✅ |
-| Mapper Tests | ✅ |
-| Service Tests | ✅ |
-| Controller Tests | ✅ |
-| Repository Tests | ✅ |
-| Exception Tests | ✅ |
-
----
-
-## Sequence Diagram
-
-### Registration and Login Flows
+## 18. Sequence Diagram
 
 ```mermaid
 sequenceDiagram
     autonumber
     actor Client
-    participant Controller as AuthController / UserController
-    participant Service as UserServiceImpl / AuthServiceImpl
-    participant Encrypt as BCryptPasswordEncoder
-    participant Repo as UserRepository
-    participant DB as Database (users)
+    participant Ctrl as AuthController
+    participant Svc as AuthServiceImpl
+    participant Provider as DaoAuthenticationProvider
+    participant JwtSvc as JwtService
 
-    Note over Client, DB: Registration Flow
-    Client->>Controller: POST /api/v1/auth/register (UserRequest)
-    Controller->>Service: register(UserRequest)
-    Service->>Repo: existsByEmail(email)
-    Repo-->>Service: false
-    Service->>Encrypt: encode(password)
-    Encrypt-->>Service: hashedPassword
-    Service->>Repo: save(user)
-    Repo->>DB: INSERT into users
-    DB-->>Repo: saved User entity
-    Repo-->>Service: User entity
-    Service-->>Controller: UserResponse
-    Controller-->>Client: 201 Created (UserResponse)
-
-    Note over Client, DB: Login Flow
-    Client->>Controller: POST /api/v1/auth/login (LoginRequest)
-    Controller->>Service: login(LoginRequest)
-    Service->>Encrypt: authenticate credentials
-    Service->>Service: generateToken(userDetails)
-    Service-->>Controller: LoginResponse (accessToken)
-    Controller-->>Client: 200 OK (LoginResponse)
+    Client->>Ctrl: POST /api/v1/auth/login { email, password }
+    Ctrl->>Svc: login(request)
+    Svc->>Provider: authenticate(token)
+    Provider-->>Svc: Success
+    Svc->>JwtSvc: generateToken(userDetails)
+    JwtSvc-->>Svc: JWT Access Token
+    Svc-->>Ctrl: LoginResponse
+    Ctrl-->>Client: HTTP 200 OK (LoginResponse)
 ```
 
 ---
 
-## Module Dependencies
+## 19. Mermaid Diagrams
 
-### Direct Dependencies
-- **Security Module**: Uses `JwtService`, `CustomUserDetails`, `PasswordEncoder`, and `AuthenticationManager`.
-- **Common Module**: Uses `GlobalExceptionHandler` and `ErrorResponse`.
-
-### Downstream Consumers
-- **Cart Module**: `Cart` entity links to `User`.
-- **Order Module**: `Order` entity links to `User`.
-- **Payment Module**: Passes `X-User-Id` for payment processing.
-
----
-
-## Design Decisions
-
-- **Why DTOs are used**: Isolates domain entities from client API contracts. Prevents raw password hashes or internal entity fields from leaking into JSON HTTP responses, and protects against mass-assignment vulnerabilities.
-- **Why static mappers**: `UserMapper` uses stateless static utility methods to convert between DTOs and entities with minimal overhead, avoiding Spring bean lifecycle management and runtime reflection costs.
-- **Why @Transactional**: Ensures database integrity during user registration, guaranteeing atomic transactions and automatically rolling back changes if an exception occurs.
-- **Why lazy loading**: User relationships in downstream domain modules (such as Cart and Order) use `FetchType.LAZY` to prevent loading full user entity graphs when only primary key references are required.
-- **Why JWT**: Enables completely stateless authentication across all platform microservices, eliminating server-side session state and allowing application nodes to scale horizontally without session replication.
-- **Why BCrypt**: Hashing plain-text passwords with `BCryptPasswordEncoder` incorporates automatic random salting and adaptable work factor iterations, protecting stored credentials against rainbow table and brute-force attacks.
-- **Why package-by-feature**: Grouping code into `com.amazonscale.user` aggregates controllers, services, repositories, DTOs, and entities into a cohesive module, enhancing maintainability and enforcing domain encapsulation.
+```mermaid
+graph TD
+    UserReq[User Registration Request] --> Val{Valid Input?}
+    Val -->|No| Err400[HTTP 400 Bad Request]
+    Val -->|Yes| Exists{Email Exists?}
+    Exists -->|Yes| Conflict[Throw EmailAlreadyExistsException]
+    Exists -->|No| Hash[BCrypt Hash Password]
+    Hash --> Save[Persist User Entity]
+    Save --> Resp[Return UserResponse 201 Created]
+```
 
 ---
 
-## Current Limitations
-
-1. **No Profile Management APIs**: Lack of GET/PUT user profile endpoints (e.g. `GET /api/v1/users/me` or `PUT /api/v1/users/profile`).
-2. **Hardcoded Customer Role**: `UserRequest.role` field is ignored on registration; all new accounts are assigned `Role.CUSTOMER`. No dedicated endpoint exists to register `SELLER` or `ADMIN` accounts.
-3. **No Password Reset Workflow**: Missing password reset and change-password capabilities.
-4. **Split Auth Controllers**: `UserController` and `AuthController` are separate classes but mapped to the exact same base path `/api/v1/auth`.
-5. **Missing OpenAPI Annotations**: Lacks Swagger `@Tag` and `@Operation` annotations on `UserController` and `AuthController`.
+## 20. Testing Overview
+Covered by JUnit 5 and Mockito unit tests in `src/test/java/com/amazonscale/user`:
+- `UserServiceImplTest`: Validates registration, duplicate email rejection, BCrypt hashing.
+- `AuthServiceImplTest`: Verifies authentication credential handling and JWT issue.
+- `UserControllerTest` & `AuthControllerTest`: Validates MockMvc endpoint contracts.
 
 ---
 
-## Future Enhancements
+## 21. Known Limitations
+1. Hardcoded customer role assignment on registration.
+2. Lack of self-service user profile management endpoints (`GET /api/v1/users/me`).
 
-- **User Profile APIs**: Add profile retrieval and update endpoints (`GET /api/v1/users/me`, `PUT /api/v1/users/me`).
-- **Admin User Management**: Add endpoints for administrators to manage users and modify roles (`GET /api/v1/users`, `PUT /api/v1/users/{id}/role`).
-- **Password Reset & Change**: Add endpoints for password reset requests and password changes.
-- **Controller Restructuring**: Consolidate authentication endpoints under `AuthController` and move user management endpoints to `UserController` at `/api/v1/users`.
-- **Swagger Documentation**: Add OpenAPI annotations (`@Tag`, `@Operation`) for Auth endpoints.
+---
 
+## 22. Future Improvements
+Refer to user module technical recommendations:
+- [User Recommendations](recommendations/User-Recommendations.md)
+
+---
+
+## 23. References
+- [Architecture Documentation](Architecture.md)
+- [Security Documentation](Security.md)
+- [Database Documentation](Database-Schema.md)

@@ -9,6 +9,7 @@
 - [Security Architecture](Security.md)
 - [Database Schema Specification](Database-Schema.md)
 - [Common Module](Common.md)
+- [API Design Recommendations](recommendations/API-Design-Recommendations.md)
 
 ---
 
@@ -17,15 +18,15 @@
 This document specifies the RESTful API design for the **AmazonScale** enterprise e-commerce platform. All APIs adhere strictly to modern REST conventions:
 
 - **JSON Format**: All request and response bodies utilize UTF-8 encoded `application/json`.
-- **Resource-Oriented Nouns**: Plural nouns represent domain resource collections (e.g. `/api/v1/products`, `/api/v1/orders`, `/api/v1/categories`).
+- **Resource-Oriented Nouns**: Plural nouns represent domain resource collections (e.g. `/api/v1/products`, `/api/v1/orders`, `/api/v1/categories`, `/api/v1/wishlists`).
 - **HTTP Verbs**:
   - `GET`: Idempotent read operations without side effects.
   - `POST`: Non-idempotent creation operations and complex actions.
   - `PUT`: Idempotent full replacements or state updates.
-  - `PATCH`: Partial state transitions (e.g. administrative order status updates).
+  - `PATCH`: Partial state transitions.
   - `DELETE`: Idempotent resource removal operations.
 - **API Versioning Strategy**: Explicit URI path versioning prefixed with `/api/v1` guarantees backwards compatibility during future major iterations.
-- **Pagination Strategy**: List retrieval endpoints (`/api/v1/products`, `/api/v1/inventory`, `/api/v1/categories`, `/api/v1/orders`) currently return unpaginated JSON arrays. The production roadmap targets migration to Spring Data `Pageable` standard (`?page=0&size=20&sort=createdAt,desc`) with metadata wrappers.
+- **Pagination Strategy**: List retrieval endpoints (`/api/v1/products`, `/api/v1/inventory`, `/api/v1/categories`, `/api/v1/orders`, `/api/v1/wishlists`) currently return JSON arrays.
 
 ---
 
@@ -53,7 +54,7 @@ All error responses (except Bean Validation errors) return a standardized JSON s
 
 ```json
 {
-  "timestamp": "2026-07-26T20:30:00",
+  "timestamp": "2026-07-28T00:30:00",
   "status": 404,
   "error": "Not Found",
   "message": "Product not found with id : 99",
@@ -109,6 +110,13 @@ When JSR-303 validation annotations (`@NotBlank`, `@Positive`, `@Email`, etc.) f
 | **Payment** | `/api/v1/payments/{id}` | `GET` | Bearer JWT + `X-User-Id` | Fetch payment record by ID |
 | **Payment** | `/api/v1/payments/order/{orderId}` | `GET` | Bearer JWT + `X-User-Id` | Fetch payment by Order ID |
 | **Payment** | `/api/v1/payments/{id}/refund` | `POST` | Bearer JWT + `X-User-Id` | Process payment refund |
+| **Wishlist** | `/api/v1/wishlists` | `POST` | Bearer JWT | Create new wishlist |
+| **Wishlist** | `/api/v1/wishlists` | `GET` | Bearer JWT | Fetch user wishlists |
+| **Wishlist** | `/api/v1/wishlists/{id}` | `GET` | Bearer JWT | Fetch wishlist by ID |
+| **Wishlist** | `/api/v1/wishlists/{id}` | `PUT` | Bearer JWT | Update wishlist details |
+| **Wishlist** | `/api/v1/wishlists/{id}` | `DELETE` | Bearer JWT | Delete custom wishlist |
+| **Wishlist** | `/api/v1/wishlists/{id}/items` | `POST` | Bearer JWT | Add item to wishlist |
+| **Wishlist** | `/api/v1/wishlists/items/{itemId}` | `DELETE` | Bearer JWT | Remove item from wishlist |
 
 ---
 
@@ -139,7 +147,7 @@ Creates a new customer account.
     "email": "john.doe@example.com",
     "role": "CUSTOMER",
     "enabled": true,
-    "createdAt": "2026-07-26T20:30:00"
+    "createdAt": "2026-07-28T00:30:00"
   }
   ```
 - **Errors:** `409 Conflict` (Email already registered), `400 Bad Request` (Validation error).
@@ -185,20 +193,7 @@ Adds a new product to the catalog.
     "brand": "AudioScale"
   }
   ```
-- **Validation Rules:** `name` (max 100, required), `description` (max 1000, required), `imageUrl` (max 1000, required), `price` (`> 0`, required), `stock` (`>= 0`, required), `brand` (max 100, required).
-- **Response `201 Created` (`ProductResponse`):**
-  ```json
-  {
-    "id": 10,
-    "name": "Wireless Noise Cancelling Headphones",
-    "imageUrl": null,
-    "description": "Premium over-ear headphones with 30-hour battery life",
-    "price": 299.99,
-    "stock": 50,
-    "brand": "AudioScale",
-    "active": true
-  }
-  ```
+- **Response `201 Created` (`ProductResponse`)**
 
 ---
 
@@ -206,8 +201,8 @@ Adds a new product to the catalog.
 Fetches product details by ID.
 
 - **Auth Required:** Bearer JWT
-- **Response `200 OK` (`ProductResponse`):** Same schema as above.
-- **Errors:** `404 Not Found` (Product ID does not exist).
+- **Response `200 OK` (`ProductResponse`)**
+- **Errors:** `404 Not Found`.
 
 ---
 
@@ -215,7 +210,7 @@ Fetches product details by ID.
 Retrieves all products in catalog.
 
 - **Auth Required:** Bearer JWT
-- **Response `200 OK` (`List<ProductResponse>`):** Array of product objects.
+- **Response `200 OK` (`List<ProductResponse>`)**
 
 ---
 
@@ -223,8 +218,7 @@ Retrieves all products in catalog.
 Updates existing product details.
 
 - **Auth Required:** Bearer JWT
-- **Request Body (`ProductRequest`):** Same as create request.
-- **Response `200 OK` (`ProductResponse`):** Updated product object.
+- **Response `200 OK` (`ProductResponse`)**
 - **Errors:** `404 Not Found`, `400 Bad Request`.
 
 ---
@@ -234,7 +228,6 @@ Deletes product record.
 
 - **Auth Required:** Bearer JWT
 - **Response `204 No Content`**
-- **Errors:** `404 Not Found`.
 
 ---
 
@@ -253,23 +246,7 @@ Creates a warehouse inventory record bound to a product.
     "lowStockThreshold": 15
   }
   ```
-- **Response `201 Created` (`InventoryResponse`):**
-  ```json
-  {
-    "id": 5,
-    "productId": 10,
-    "productName": "Wireless Noise Cancelling Headphones",
-    "quantity": 100,
-    "reservedQuantity": 0,
-    "availableQuantity": 100,
-    "warehouseLocation": "WH-BLR-A12",
-    "lowStockThreshold": 15,
-    "lowStock": null,
-    "createdAt": "2026-07-26T20:30:00",
-    "updatedAt": "2026-07-26T20:30:00"
-  }
-  ```
-- **Errors:** `404 Not Found` (Product missing), `409 Conflict` (Inventory already exists for product).
+- **Response `201 Created` (`InventoryResponse`)**
 
 ---
 
@@ -277,7 +254,6 @@ Creates a warehouse inventory record bound to a product.
 Fetch inventory record by ID.
 
 - **Response `200 OK` (`InventoryResponse`)**
-- **Errors:** `404 Not Found`.
 
 ---
 
@@ -285,23 +261,13 @@ Fetch inventory record by ID.
 Fetch inventory record by associated product ID.
 
 - **Response `200 OK` (`InventoryResponse`)**
-- **Errors:** `404 Not Found`.
 
 ---
 
 #### `PUT /api/v1/inventory/{id}`
 Update warehouse inventory quantity, location, and threshold.
 
-- **Request Body (`InventoryUpdateRequest`):**
-  ```json
-  {
-    "quantity": 120,
-    "warehouseLocation": "WH-BLR-A14",
-    "lowStockThreshold": 20
-  }
-  ```
 - **Response `200 OK` (`InventoryResponse`)**
-- **Errors:** `404 Not Found`, `400 Bad Request` (New quantity < reservedQuantity).
 
 ---
 
@@ -309,7 +275,6 @@ Update warehouse inventory quantity, location, and threshold.
 Deletes inventory record.
 
 - **Response `204 No Content`**
-- **Errors:** `404 Not Found`, `400 Bad Request` (Reserved quantity > 0).
 
 ---
 
@@ -327,27 +292,14 @@ Creates a product category.
     "parentCategoryId": null
   }
   ```
-- **Response `201 Created` (`CategoryResponse`):**
-  ```json
-  {
-    "id": 2,
-    "name": "Electronics",
-    "description": "Gadgets, audio, and personal devices",
-    "imageUrl": "https://images.example.com/electronics.jpg",
-    "parentCategoryId": null,
-    "createdAt": "2026-07-26T20:30:00",
-    "updatedAt": "2026-07-26T20:30:00"
-  }
-  ```
-- **Errors:** `409 Conflict` (Category name already exists), `404 Not Found` (Parent category not found).
+- **Response `201 Created` (`CategoryResponse`)**
 
 ---
 
 #### `PUT /api/v1/categories/{id}`
 Updates category details and hierarchy.
 
-- **Request Body (`UpdateCategoryRequest`):** Same schema as create request.
-- **Errors:** `409 Conflict`, `404 Not Found`, `400 Bad Request` (Self-parenting attempt: `id == parentCategoryId`).
+- **Response `200 OK` (`CategoryResponse`)**
 
 ---
 
@@ -356,26 +308,8 @@ Updates category details and hierarchy.
 #### `GET /api/v1/cart`
 Fetches the active authenticated user's shopping cart.
 
-- **Auth Required:** Bearer JWT (`@AuthenticationPrincipal`)
-- **Response `200 OK` (`CartResponse`):**
-  ```json
-  {
-    "id": 1,
-    "userId": 42,
-    "items": [
-      {
-        "id": 101,
-        "productId": 10,
-        "productName": "Wireless Noise Cancelling Headphones",
-        "quantity": 2,
-        "unitPrice": 299.99,
-        "totalPrice": 599.98
-      }
-    ],
-    "totalPrice": 599.98,
-    "totalItems": 2
-  }
-  ```
+- **Auth Required:** Bearer JWT
+- **Response `200 OK` (`CartResponse`)**
 
 ---
 
@@ -389,23 +323,14 @@ Adds a product item to the user's cart.
     "quantity": 2
   }
   ```
-- **Validation Rules:** `productId` (required), `quantity` (`>= 1`, required).
 - **Response `200 OK` (`CartResponse`)**
-- **Errors:** `404 Not Found` (Product not found), `400 Bad Request` (Insufficient stock or inactive product).
 
 ---
 
 #### `PUT /api/v1/cart/items/{itemId}`
 Updates quantity of a specific line item in the cart.
 
-- **Request Body (`UpdateCartItemRequest`):**
-  ```json
-  {
-    "quantity": 3
-  }
-  ```
 - **Response `200 OK` (`CartResponse`)**
-- **Errors:** `404 Not Found` (Cart item not found), `400 Bad Request` (Quantity `< 1` or stock unavailable).
 
 ---
 
@@ -437,43 +362,14 @@ Converts user's cart into a firm order and deducts product inventory stock.
     "paymentMethod": "UPI"
   }
   ```
-- **Allowed Payment Methods:** `COD`, `UPI`, `CREDIT_CARD`, `DEBIT_CARD`, `NET_BANKING`.
-- **Response `201 Created` (`OrderResponse`):**
-  ```json
-  {
-    "id": 1001,
-    "userId": 42,
-    "orderItems": [
-      {
-        "id": 501,
-        "productId": 10,
-        "productName": "Wireless Noise Cancelling Headphones",
-        "quantity": 2,
-        "unitPrice": 299.99,
-        "totalPrice": 599.98
-      }
-    ],
-    "subtotal": 599.98,
-    "tax": 107.99,
-    "shippingFee": 0.00,
-    "discount": 0.00,
-    "totalAmount": 707.97,
-    "status": "PENDING",
-    "paymentMethod": "UPI",
-    "shippingAddress": "123 Tech Park, Electronic City, Bengaluru",
-    "createdAt": "2026-07-26T20:30:00"
-  }
-  ```
-- **Errors:** `400 Bad Request` (Empty cart, inactive product, insufficient stock), `404 Not Found`.
+- **Response `201 Created` (`OrderResponse`)**
 
 ---
 
 #### `GET /api/v1/orders/{id}`
 Fetch single order by ID.
 
-- **Query Parameter:** `userId` (Long, required)
 - **Response `200 OK` (`OrderResponse`)**
-- **Errors:** `404 Not Found` (Order missing or user mismatch).
 
 ---
 
@@ -485,11 +381,9 @@ Fetch all orders placed by specified user.
 ---
 
 #### `POST /api/v1/orders/{id}/cancel`
-Cancels order (if status is `PENDING` or `CONFIRMED`) and restores product inventory stock.
+Cancels order and restores product inventory stock.
 
-- **Query Parameter:** `userId` (Long, required)
 - **Response `200 OK` (`OrderResponse`)**
-- **Errors:** `400 Bad Request` (Order is already `SHIPPED`, `DELIVERED`, or `CANCELLED`).
 
 ---
 
@@ -497,9 +391,7 @@ Cancels order (if status is `PENDING` or `CONFIRMED`) and restores product inven
 Transitions order status following state machine rules.
 
 - **Query Parameter:** `status` (`OrderStatus`, required)
-- **Valid Statuses:** `PENDING`, `CONFIRMED`, `SHIPPED`, `DELIVERED`, `CANCELLED`.
 - **Response `200 OK` (`OrderResponse`)**
-- **Errors:** `400 Bad Request` (Illegal state machine transition).
 
 ---
 
@@ -509,7 +401,7 @@ Transitions order status following state machine rules.
 Initiates a payment transaction for an existing order.
 
 - **Auth Required:** Bearer JWT + `X-User-Id` Header
-- **Request Body (`PaymentRequest`):**
+- **Request Body (`CreatePaymentRequest`):**
   ```json
   {
     "orderId": 1001,
@@ -518,27 +410,13 @@ Initiates a payment transaction for an existing order.
     "transactionId": "TXN_UPI_987654321"
   }
   ```
-- **Response `201 Created` (`PaymentResponse`):**
-  ```json
-  {
-    "id": 301,
-    "orderId": 1001,
-    "userId": 42,
-    "paymentMethod": "UPI",
-    "status": "COMPLETED",
-    "amount": 707.97,
-    "transactionId": "TXN_UPI_987654321",
-    "paymentDate": "2026-07-26T20:30:00"
-  }
-  ```
-- **Errors:** `400 Bad Request` (Amount mismatch, invalid payment method, inactive product), `404 Not Found` (Order not found), `402 Payment Required` (Payment processing failure simulation).
+- **Response `201 Created` (`PaymentResponse`)**
 
 ---
 
 #### `GET /api/v1/payments/{id}`
 Fetches payment record by ID.
 
-- **Auth Required:** Bearer JWT + `X-User-Id` Header
 - **Response `200 OK` (`PaymentResponse`)**
 
 ---
@@ -546,7 +424,6 @@ Fetches payment record by ID.
 #### `GET /api/v1/payments/order/{orderId}`
 Fetches payment record associated with specified order ID.
 
-- **Auth Required:** Bearer JWT + `X-User-Id` Header
 - **Response `200 OK` (`PaymentResponse`)**
 
 ---
@@ -554,6 +431,62 @@ Fetches payment record associated with specified order ID.
 #### `POST /api/v1/payments/{id}/refund`
 Executes a refund for a `COMPLETED` payment transaction.
 
-- **Auth Required:** Bearer JWT + `X-User-Id` Header
 - **Response `200 OK` (`PaymentResponse`)**
-- **Errors:** `400 Bad Request` (Payment is not `COMPLETED` or already refunded).
+
+---
+
+### 8. Wishlist Endpoints
+
+#### `POST /api/v1/wishlists`
+Creates a custom wishlist.
+
+- **Auth Required:** Bearer JWT
+- **Request Body (`CreateWishlistRequest`):**
+  ```json
+  {
+    "name": "Tech Gifts",
+    "description": "Gadgets I want for the holidays",
+    "type": "CUSTOM"
+  }
+  ```
+- **Response `201 Created` (`WishlistResponse`)**
+
+---
+
+#### `GET /api/v1/wishlists`
+Fetches all wishlists for authenticated user.
+
+- **Auth Required:** Bearer JWT
+- **Response `200 OK` (`UserWishlistsResponse`)**
+
+---
+
+#### `GET /api/v1/wishlists/{id}`
+Fetches specific wishlist details by ID.
+
+- **Auth Required:** Bearer JWT
+- **Response `200 OK` (`WishlistResponse`)**
+
+---
+
+#### `POST /api/v1/wishlists/{id}/items`
+Adds a product to a wishlist.
+
+- **Auth Required:** Bearer JWT
+- **Request Body (`AddToWishlistRequest`):**
+  ```json
+  {
+    "productId": 10,
+    "note": "Prefer black color variant",
+    "priority": "HIGH"
+  }
+  ```
+- **Response `200 OK` (`WishlistResponse`)**
+
+---
+
+#### `DELETE /api/v1/wishlists/items/{itemId}`
+Removes an item from a wishlist.
+
+- **Auth Required:** Bearer JWT
+- **Response `204 No Content`**

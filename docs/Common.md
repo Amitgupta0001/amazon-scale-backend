@@ -1,260 +1,217 @@
-# Common & Infrastructure Module
+# Common Module Specification
 
 ---
 
-## Related Documentation
-
-- [Documentation Index](README.md)
-- [Architecture Overview](Architecture.md)
-- [Security Architecture](Security.md)
-- [Database Schema Specification](Database-Schema.md)
-- [REST API Specification](API-Design.md)
+## 1. Overview
+The **Common Module** provides core infrastructure components, centralized global exception handling (`@RestControllerAdvice`), standard HTTP error response structures (`ErrorResponse`), JSR-303 Bean Validation error translation, and OpenAPI 3 / Swagger documentation configuration for **AmazonScale**.
 
 ---
 
-## Overview
-
-The Common & Infrastructure module provides application-wide cross-cutting concerns for AmazonScale. It encapsulates centralized exception handling (`@RestControllerAdvice`), standard HTTP error response structures (`ErrorResponse`), and OpenAPI/Swagger documentation metadata configuration (`OpenApiConfig`).
-
-**Package root:** `com.amazonscale.common` & `com.amazonscale.config`
+## 2. Purpose
+Centralizes cross-cutting error handling, HTTP status translation, and API documentation configurations across all domain feature modules to ensure uniform client response contracts and robust error reporting.
 
 ---
 
-## Features
+## 3. Architecture
+Located under `com.amazonscale.common` and `com.amazonscale.config`, operating as a global aspect and utility layer across all controllers and services.
 
-- **Global Exception Handling**: Centralized exception interceptor mapping domain and system exceptions to standardized HTTP status codes.
-- **Standardized Error Response**: Consistent JSON payload contract (`ErrorResponse`) containing timestamp, HTTP status code, error phrase, detail message, and request path.
-- **Bean Validation Exception Handler**: Intercepts JSR-303 `@Valid` validation failures (`MethodArgumentNotValidException`) and maps field errors to a structured key-value map.
-- **OpenAPI / Swagger 3 Metadata**: Configures API documentation title, description, version, and developer contact details.
-
----
-
-## Architecture
-
-```
-REST Controller Exception
-  │
-  v
-GlobalExceptionHandler             (@RestControllerAdvice)
-  │
-  ├── Custom Domain Handlers (18+ specialized exception methods)
-  ├── Bean Validation Handler (MethodArgumentNotValidException)
-  └── Generic Fallback Handler (Exception.class)
-  │
-  v
-ErrorResponse / Field Errors Map   (Returned with appropriate HTTP status)
+```mermaid
+graph TD
+    Controller[Any REST Controller] -->|Throws Exception| Advice[GlobalExceptionHandler @RestControllerAdvice]
+    Advice -->|Intercepts Exception| Build[buildErrorResponse / Validation Handler]
+    Build -->|Constructs| DTO[ErrorResponse / Map<String, String>]
+    DTO -->|Returns JSON| Client[HTTP Client]
 ```
 
 ---
 
-## Package Structure
-
+## 4. Package Structure
 ```
-com.amazonscale.common
-├── exception
-│   └── GlobalExceptionHandler.java    @RestControllerAdvice intercepting all controller exceptions
-└── response
-    └── ErrorResponse.java             Standardized error DTO contract
-
-com.amazonscale.config
-└── OpenApiConfig.java                 OpenAPI / Swagger v3 metadata configuration
+com.amazonscale
+├── common
+│   ├── exception
+│   │   └── GlobalExceptionHandler.java
+│   └── response
+│       └── ErrorResponse.java
+└── config
+    └── OpenApiConfig.java
 ```
 
 ---
 
-## Core Components
+## 5. Components
+- **`GlobalExceptionHandler`**: Intercepts domain and framework exceptions thrown by any `@RestController` bean across all modules.
+- **`ErrorResponse`**: Standardized JSON response payload model returned during exception events.
+- **`OpenApiConfig`**: Configures OpenAPI 3 info metadata, contact specifications, and JWT Bearer security scheme for Swagger UI.
 
-### 1. `ErrorResponse`
+---
 
-**Purpose:** Standardized JSON error response payload returned to clients upon HTTP error status codes.
+## 6. Database Design
+Not applicable (Infrastructure module without persistent database tables).
+
+---
+
+## 7. Entity Relationships
+Not applicable (Non-persistent infrastructure component).
+
+---
+
+## 8. DTOs
+
+### `ErrorResponse`
+Standard JSON structure returned for all handled API errors (except Bean Validation errors):
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `timestamp` | `LocalDateTime` | Exact timestamp when the error occurred |
-| `status` | `int` | HTTP status code integer (e.g., `404`, `400`, `409`) |
-| `error` | `String` | HTTP status reason phrase (e.g., `"Not Found"`, `"Bad Request"`) |
-| `message` | `String` | Human-readable error detail message |
-| `path` | `String` | Request URI endpoint path (e.g., `"/api/v1/products/99"`) |
-
-**Constructors & Lombok:** Annotated with `@Builder`. Provides default empty constructor, 5-argument constructor, and explicit getters/setters for all fields.
+| `timestamp` | `LocalDateTime` | Date and time when the error occurred |
+| `status` | `int` | HTTP status code (e.g. 400, 404, 409, 500) |
+| `error` | `String` | Official HTTP status reason phrase (e.g. "Not Found") |
+| `message` | `String` | Human-readable exception message |
+| `path` | `String` | Request URI that triggered the exception |
 
 ---
 
-### 2. `GlobalExceptionHandler`
-
-**Purpose:** Spring `@RestControllerAdvice` component providing global exception handling across all controllers.
-
-#### Exception Mapping Matrix
-
-| Exception Class | HTTP Status | Reason Phrase | Return Payload |
-|-----------------|-------------|---------------|----------------|
-| `ProductNotFoundException` | `404 NOT_FOUND` | Not Found | `ErrorResponse` |
-| `ProductInactiveException` | `400 BAD_REQUEST` | Bad Request | `ErrorResponse` |
-| `CategoryNotFoundException` | `404 NOT_FOUND` | Not Found | `ErrorResponse` |
-| `CategoryAlreadyExistsException` | `409 CONFLICT` | Conflict | `ErrorResponse` |
-| `InvalidCategoryHierarchyException` | `400 BAD_REQUEST` | Bad Request | `ErrorResponse` |
-| `InventoryNotFoundException` | `404 NOT_FOUND` | Not Found | `ErrorResponse` |
-| `InventoryAlreadyExistsException` | `409 CONFLICT` | Conflict | `ErrorResponse` |
-| `InsufficientStockException` | `400 BAD_REQUEST` | Bad Request | `ErrorResponse` |
-| `CartNotFoundException` | `404 NOT_FOUND` | Not Found | `ErrorResponse` |
-| `CartItemNotFoundException` | `404 NOT_FOUND` | Not Found | `ErrorResponse` |
-| `InvalidQuantityException` | `400 BAD_REQUEST` | Bad Request | `ErrorResponse` |
-| `OrderNotFoundException` | `404 NOT_FOUND` | Not Found | `ErrorResponse` |
-| `EmptyCartException` | `400 BAD_REQUEST` | Bad Request | `ErrorResponse` |
-| `InvalidOrderStatusTransitionException` | `400 BAD_REQUEST` | Bad Request | `ErrorResponse` |
-| `EmailAlreadyExistsException` | `409 CONFLICT` | Conflict | `ErrorResponse` |
-| `PaymentNotFoundException` | `404 NOT_FOUND` | Not Found | `ErrorResponse` |
-| `InvalidPaymentException` | `400 BAD_REQUEST` | Bad Request | `ErrorResponse` |
-| `PaymentFailedException` | `402 PAYMENT_REQUIRED` | Payment Required | `ErrorResponse` |
-| `MethodArgumentNotValidException` | `400 BAD_REQUEST` | Bad Request | `Map<String, String>` (field -> error message) |
-| `Exception` (Generic) | `500 INTERNAL_SERVER_ERROR` | Internal Server Error | `ErrorResponse` ("An unexpected error occurred.") |
-
-#### Internal Helper: `buildErrorResponse`
-```java
-private ResponseEntity<ErrorResponse> buildErrorResponse(
-        HttpStatus status,
-        String message,
-        HttpServletRequest request) {
-
-    ErrorResponse error = new ErrorResponse(
-            LocalDateTime.now(),
-            status.value(),
-            status.getReasonPhrase(),
-            message,
-            request.getRequestURI()
-    );
-
-    return ResponseEntity.status(status).body(error);
-}
-```
+## 9. Repository Layer
+Not applicable (Infrastructure module).
 
 ---
 
-### 3. `OpenApiConfig`
-
-**Purpose:** Spring `@Configuration` defining custom OpenAPI / Swagger documentation bean (`OpenAPI`).
-
-```java
-@Configuration
-public class OpenApiConfig {
-
-    @Bean
-    public OpenAPI amazonScaleOpenAPI() {
-        return new OpenAPI()
-                .info(new Info()
-                        .title("AmazonScale Backend API")
-                        .version("v1.0")
-                        .description("Enterprise E-Commerce Backend built with Spring Boot 4.0.7")
-                        .contact(new Contact()
-                                .name("Amit Kumar Gupta")));
-    }
-}
-```
+## 10. Service Layer
+Not applicable (Infrastructure module).
 
 ---
 
-## Request Lifecycle
-
-End-to-end execution flow for Global Exception Interception:
-
-```
-Client
-   ↓
-Controller Action (Throws domain or validation exception during request processing)
-   ↓
-GlobalExceptionHandler (@RestControllerAdvice intercepts thrown exception)
-   ↓
-Handler Resolution (Matches exception type against declared @ExceptionHandler methods)
-   ↓
-Context Extraction (Extracts request URI via HttpServletRequest & resolves HTTP status)
-   ↓
-Payload Construction (Builds ErrorResponse object or field validation error map)
-   ↓
-Response Delivery (Returns ResponseEntity with appropriate status code & JSON payload)
-```
+## 11. Controller Layer
+Operates globally across all controller beans using Spring's `@RestControllerAdvice`.
 
 ---
 
-## Testing
-
-**Test Suite Coverage Summary:** 3 test classes covering common and OpenAPI components:
-
-| Test Class | Coverage Description |
-|------------|----------------------|
-| `GlobalExceptionHandlerTest` | Comprehensive unit tests for all 20 exception handler methods verifying HTTP status codes and error payloads using `MockHttpServletRequest`. |
-| `ErrorResponseTest` | Unit tests verifying `ErrorResponse` constructors, builder pattern, getters, and setters. |
-| `OpenApiConfigTest` | Unit test verifying `OpenAPI` bean initialization and metadata fields (title, version, description, contact). |
-
-### Test Type Status
-
-| Test Type | Status |
-|-----------|--------|
-| DTO Tests | ✅ |
-| Mapper Tests | ✅ |
-| Service Tests | ✅ |
-| Controller Tests | ✅ |
-| Repository Tests | ✅ |
-| Exception Tests | ✅ |
+## 12. Business Rules
+1. **Uniform Response Structure**: Every exception thrown within controller request processing is intercepted and formatted into a consistent JSON `ErrorResponse` or field-error map.
+2. **Bean Validation Field Mapping**: JSR-303 `@Valid` failures (`MethodArgumentNotValidException`) are mapped to a `Map<String, String>` where keys are field names and values are validation messages.
+3. **No Leaked Stack Traces**: Production runtime exceptions return clean user-facing error messages while logging stack traces via `@Slf4j`.
 
 ---
 
-## Sequence Diagram
+## 13. Validation
+Intercepts `@Valid` annotation failures via `handleValidationExceptions()`:
+- Input Payload: `MethodArgumentNotValidException`
+- Output Payload: `Map<String, String>` (e.g., `{"email": "Invalid email format", "password": "Password must be at least 8 characters"}`)
+- HTTP Status: `400 Bad Request`
 
-### Global Exception Interception Flow
+---
+
+## 14. Exception Handling
+
+`GlobalExceptionHandler` handles 20+ distinct domain and framework exceptions:
+
+| Handled Exception | Target Module | Mapped HTTP Status |
+|-------------------|---------------|--------------------|
+| `ProductNotFoundException` | Product | `404 Not Found` |
+| `ProductInactiveException` | Product | `400 Bad Request` |
+| `CategoryNotFoundException` | Category | `404 Not Found` |
+| `CategoryAlreadyExistsException` | Category | `409 Conflict` |
+| `InvalidCategoryHierarchyException` | Category | `400 Bad Request` |
+| `InventoryNotFoundException` | Inventory | `404 Not Found` |
+| `InventoryAlreadyExistsException` | Inventory | `409 Conflict` |
+| `InsufficientStockException` | Inventory | `400 Bad Request` |
+| `CartNotFoundException` | Cart | `404 Not Found` |
+| `CartItemNotFoundException` | Cart | `404 Not Found` |
+| `InvalidQuantityException` | Cart | `400 Bad Request` |
+| `OrderNotFoundException` | Order | `404 Not Found` |
+| `EmptyCartException` | Order | `400 Bad Request` |
+| `InvalidOrderStatusTransitionException` | Order | `400 Bad Request` |
+| `PaymentNotFoundException` | Payment | `404 Not Found` |
+| `InvalidPaymentException` | Payment | `400 Bad Request` |
+| `PaymentFailedException` | Payment | `402 Payment Required` |
+| `EmailAlreadyExistsException` | User | `409 Conflict` |
+| `WishlistNotFoundException` | Wishlists | `404 Not Found` |
+| `WishlistAlreadyExistsException` | Wishlists | `409 Conflict` |
+| `WishlistItemAlreadyExistsException` | Wishlists | `409 Conflict` |
+| `WishlistItemNotFoundException` | Wishlists | `404 Not Found` |
+| `DefaultWishlistModificationException` | Wishlists | `400 Bad Request` |
+| `MethodArgumentNotValidException` | Framework | `400 Bad Request` |
+| `Exception` (Fallback) | Framework | `500 Internal Server Error` |
+
+---
+
+## 15. Security
+OpenAPI documentation endpoints (`/swagger-ui/**`, `/v3/api-docs/**`) are explicitly configured as public in `SecurityConfig`. Swagger UI includes Bearer JWT authentication controls defined in `OpenApiConfig`.
+
+---
+
+## 16. API Reference
+- **Swagger UI Interactive Portal**: `GET /swagger-ui/index.html`
+- **OpenAPI 3 JSON Schema**: `GET /v3/api-docs`
+
+---
+
+## 17. Request Flow
+Client HTTP Request -> Controller Action Throws Exception -> `GlobalExceptionHandler` Interception -> `buildErrorResponse()` or `handleValidationExceptions()` -> Serialized JSON Payload.
+
+---
+
+## 18. Sequence Diagram
 
 ```mermaid
 sequenceDiagram
     autonumber
     actor Client
-    participant Controller as ProductController
-    participant Handler as GlobalExceptionHandler
+    participant Ctrl as REST Controller
+    participant Advice as GlobalExceptionHandler
     participant Req as HttpServletRequest
 
-    Client->>Controller: GET /api/v1/products/99
-    Controller-->>Handler: throw ProductNotFoundException
-    Handler->>Req: getRequestURI()
-    Req-->>Handler: "/api/v1/products/99"
-    Handler->>Handler: buildErrorResponse(NOT_FOUND, message, request)
-    Handler-->>Client: 404 NOT_FOUND (ErrorResponse payload)
+    Client->>Ctrl: POST /api/v1/orders (Invalid Cart)
+    Ctrl-->>Advice: throw EmptyCartException("Cart is empty")
+    Advice->>Req: getRequestURI()
+    Req-->>Advice: "/api/v1/orders"
+    Advice->>Advice: buildErrorResponse(HTTP 400, message, URI)
+    Advice-->>Client: HTTP 400 Bad Request { timestamp, status: 400, error: "Bad Request", message: "Cart is empty", path: "/api/v1/orders" }
 ```
 
 ---
 
-## Module Dependencies
+## 19. Mermaid Diagrams
 
-### Direct Dependencies
-- Spring Web (`@RestControllerAdvice`, `@ExceptionHandler`, `ResponseEntity`).
-- Jakarta Servlet API (`HttpServletRequest`).
-- OpenAPI v3 (`io.swagger.v3.oas.models.OpenAPI`).
-
-### Interacts With
-- All domain modules (`User`, `Product`, `Category`, `Inventory`, `Cart`, `Order`, `Payment`).
-
----
-
-## Design Decisions
-
-- **Why DTOs are used**: Enforces a strict API error contract via `ErrorResponse`, preventing raw database or framework stack traces from leaking to public clients.
-- **Why static mappers**: Exception mapping relies on stateless internal helper methods (`buildErrorResponse`) to construct response entities with minimal overhead.
-- **Why @Transactional**: While `GlobalExceptionHandler` itself is non-transactional, it seamlessly translates database transaction rollback exceptions into user-friendly HTTP error codes.
-- **Why lazy loading**: Error handling components operate independently of database entity fetching strategies, cleanly intercepting exceptions regardless of entity initialization states.
-- **Why JWT**: Formats authentication failures into predictable HTTP 401/403 responses consistent with the rest of the application API.
-- **Why BCrypt**: Standardizes bad credential exceptions into uniform 401 Unauthorized responses without exposing timing details.
-- **Why package-by-feature**: Isolates global infrastructure, exception handlers, error DTOs, and OpenAPI configuration inside `com.amazonscale.common` and `com.amazonscale.config`.
+```mermaid
+graph TD
+    Exc[Domain Exception Escalated] --> CheckType{Exception Type}
+    CheckType -->|NotFound Exceptions| State404[HTTP 404 Not Found]
+    CheckType -->|Validation / Hierarchy / Stock| State400[HTTP 400 Bad Request]
+    CheckType -->|Duplicate Email / Category / Wishlist| State409[HTTP 409 Conflict]
+    CheckType -->|Payment Failure| State402[HTTP 402 Payment Required]
+    CheckType -->|MethodArgumentNotValid| MapErrors[Map Field Errors to Key-Value JSON]
+    CheckType -->|Unhandled Generic Exception| State500[HTTP 500 Internal Server Error]
+    
+    State404 --> ReturnError[Return ErrorResponse Payload]
+    State400 --> ReturnError
+    State409 --> ReturnError
+    State402 --> ReturnError
+    MapErrors --> ReturnMap[Return Map<String, String>]
+    State500 --> ReturnError
+```
 
 ---
 
-## Current Limitations
-
-1. **Unmapped Custom Exceptions**: `ProductUnavailableException` and `UserNotFoundException` are not explicitly handled in `GlobalExceptionHandler` and fall back to generic 500 error responses.
-2. **Inconsistent Validation Error Format**: `MethodArgumentNotValidException` returns `Map<String, String>` rather than standard `ErrorResponse` format.
-3. **Missing OpenAPI Bearer Security Scheme**: `OpenApiConfig` does not configure a JWT `SecurityScheme`, requiring manual header entry in Swagger UI.
+## 20. Testing Overview
+Covered by JUnit 5 tests in `src/test/java/com/amazonscale/common`:
+- `GlobalExceptionHandlerTest`: Validates exception interceptors, status codes, and error payload structures across all 20+ handled exceptions.
+- `ErrorResponseTest`: Validates builder pattern and getter/setter methods.
 
 ---
 
-## Future Enhancements
+## 21. Known Limitations
+1. `ErrorResponse` does not include a distributed trace ID / correlation UUID for multi-service log tracing.
 
-- Add explicit `@ExceptionHandler` methods for `ProductUnavailableException` and `UserNotFoundException`.
-- Standardize `MethodArgumentNotValidException` payload to wrap field errors within `ErrorResponse`.
-- Add JWT `SecurityScheme` configuration to `OpenApiConfig` for automated Swagger UI token authorization.
+---
 
+## 22. Future Improvements
+See technical recommendations:
+- [Common Recommendations](recommendations/Common-Recommendations.md)
+
+---
+
+## 23. References
+- [Architecture Documentation](Architecture.md)
+- [Security Documentation](Security.md)
+- [REST API Specification](API-Design.md)
