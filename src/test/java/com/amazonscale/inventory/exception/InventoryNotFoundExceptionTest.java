@@ -1,26 +1,34 @@
 package com.amazonscale.inventory.exception;
 
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.assertj.core.api.Assertions.assertThat;
 
 class InventoryNotFoundExceptionTest {
 
     @Test
-    void shouldCreateExceptionWithIdConstructor() {
-        // Act
-        InventoryNotFoundException exception = new InventoryNotFoundException(5L);
+    @DisplayName("Should create InventoryNotFoundException with formatted ID message")
+    void shouldCreateInventoryNotFoundExceptionWithIdMessage() {
+        // Arrange & Act
+        InventoryNotFoundException exception = new InventoryNotFoundException(42L);
 
         // Assert
-        assertEquals("Inventory not found with ID: 5", exception.getMessage());
+        assertThat(exception).isNotNull();
+        assertThat(exception.getMessage()).isEqualTo("Inventory not found with ID: 42");
     }
 
     @Test
-    void shouldCreateExceptionWithMessageConstructor() {
+    @DisplayName("Should create InventoryNotFoundException with custom string message")
+    void shouldCreateInventoryNotFoundExceptionWithCustomMessage() {
+        // Arrange
+        String customMsg = "Custom inventory missing message";
+
         // Act
-        InventoryNotFoundException exception = new InventoryNotFoundException("Custom not found message");
+        InventoryNotFoundException exception = new InventoryNotFoundException(customMsg);
 
         // Assert
-        assertEquals("Custom not found message", exception.getMessage());
+        assertThat(exception).isNotNull();
+        assertThat(exception.getMessage()).isEqualTo(customMsg);
     }
 }

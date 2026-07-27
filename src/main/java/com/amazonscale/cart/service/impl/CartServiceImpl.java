@@ -34,8 +34,6 @@ public class CartServiceImpl implements CartService {
     private final CartItemRepository cartItemRepository;
     private final UserRepository userRepository;
     private final ProductRepository productRepository;
-    private final CartMapper cartMapper;
-
     private Cart getCartEntity(Long userId) {
         return cartRepository.findByUser_Id(userId)
                 .orElseThrow(() -> new CartNotFoundException(userId));
@@ -115,7 +113,7 @@ public class CartServiceImpl implements CartService {
 
         cartItemRepository.save(cartItem);
 
-        return cartMapper.toCartResponse(cart);
+        return CartMapper.toCartResponse(cart);
     }
 
     // updating cart items
@@ -139,7 +137,7 @@ public class CartServiceImpl implements CartService {
 
         cartItemRepository.save(cartItem);
 
-        return cartMapper.toCartResponse(cart);
+        return CartMapper.toCartResponse(cart);
     }
 
     // removing cart items from cart
@@ -173,6 +171,6 @@ public class CartServiceImpl implements CartService {
 
         Cart cart = getCartEntity(userId);
 
-        return cartMapper.toCartResponse(cart);
+        return CartMapper.toCartResponse(cart);
     }
 }

@@ -1,5 +1,6 @@
 package com.amazonscale.payment.enums;
 
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -7,13 +8,27 @@ import static org.assertj.core.api.Assertions.assertThat;
 class PaymentGatewayTest {
 
     @Test
-    void testEnumValues() {
-        assertThat(PaymentGateway.valueOf("STRIPE")).isEqualTo(PaymentGateway.STRIPE);
+    @DisplayName("Should contain expected payment gateway enum values")
+    void shouldContainExpectedEnumValues() {
+        // Arrange & Act
+        PaymentGateway[] values = PaymentGateway.values();
+
+        // Assert
+        assertThat(values).containsExactlyInAnyOrder(
+                PaymentGateway.STRIPE,
+                PaymentGateway.RAZORPAY,
+                PaymentGateway.PHONEPAY,
+                PaymentGateway.BHARATPAY,
+                PaymentGateway.PAYPAL,
+                PaymentGateway.COD
+        );
+    }
+
+    @Test
+    @DisplayName("Should valueOf resolve string correctly")
+    void shouldResolveValueOfCorrectly() {
+        // Act & Assert
         assertThat(PaymentGateway.valueOf("RAZORPAY")).isEqualTo(PaymentGateway.RAZORPAY);
-        assertThat(PaymentGateway.valueOf("PHONEPAY")).isEqualTo(PaymentGateway.PHONEPAY);
-        assertThat(PaymentGateway.valueOf("BHARATPAY")).isEqualTo(PaymentGateway.BHARATPAY);
-        assertThat(PaymentGateway.valueOf("PAYPAL")).isEqualTo(PaymentGateway.PAYPAL);
-        assertThat(PaymentGateway.valueOf("COD")).isEqualTo(PaymentGateway.COD);
-        assertThat(PaymentGateway.values()).hasSize(6);
+        assertThat(PaymentGateway.valueOf("STRIPE")).isEqualTo(PaymentGateway.STRIPE);
     }
 }

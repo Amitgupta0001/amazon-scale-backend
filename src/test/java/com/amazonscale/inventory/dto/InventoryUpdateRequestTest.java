@@ -1,39 +1,84 @@
 package com.amazonscale.inventory.dto;
 
+import jakarta.validation.ConstraintViolation;
+import jakarta.validation.Validation;
+import jakarta.validation.Validator;
+import jakarta.validation.ValidatorFactory;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
-import static org.junit.jupiter.api.Assertions.*;
+import java.util.Set;
+
+import static org.assertj.core.api.Assertions.assertThat;
 
 class InventoryUpdateRequestTest {
 
-    @Test
-    void testInventoryUpdateRequestBuilderAndGetters() {
-        // Act
-        InventoryUpdateRequest request = InventoryUpdateRequest.builder()
-                .quantity(75)
-                .warehouseLocation("Location C")
-                .lowStockThreshold(12)
-                .build();
+    private static Validator validator;
 
-        // Assert
-        assertEquals(75, request.getQuantity());
-        assertEquals("Location C", request.getWarehouseLocation());
-        assertEquals(12, request.getLowStockThreshold());
+    @BeforeAll
+    static void setUpValidator() {
+        ValidatorFactory factory = Validation.buildDefaultValidatorFactory();
+        validator = factory.getValidator();
     }
 
     @Test
-    void testSetters() {
-        // Arrange
-        InventoryUpdateRequest request = new InventoryUpdateRequest();
-
+    @DisplayName("Should build InventoryUpdateRequest using Builder pattern and verify getters/setters")
+    void shouldBuildInventoryUpdateRequestAndVerifyGettersSetters() {
         // Act
-        request.setQuantity(30);
-        request.setWarehouseLocation("Location D");
-        request.setLowStockThreshold(8);
+        InventoryUpdateRequest request = InventoryUpdateRequest.builder()
+                .quantity(75)
+                .warehouseLocation("Warehouse C")
+                .lowStockThreshold(20)
+                .build();
 
         // Assert
-        assertEquals(30, request.getQuantity());
-        assertEquals("Location D", request.getWarehouseLocation());
-        assertEquals(8, request.getLowStockThreshold());
+        assertThat(request.getQuantity()).isEqualTo(75);
+        assertThat(request.getWarehouseLocation()).isEqualTo("Warehouse C");
+        assertThat(request.getLowStockThreshold()).isEqualTo(20);
+
+        // Act - Setters
+        request.setQuantity(80);
+        request.setWarehouseLocation("Warehouse D");
+        request.setLowStockThreshold(25);
+
+        // Assert
+        assertThat(request.getQuantity()).isEqualTo(80);
+        assertThat(request.getWarehouseLocation()).isEqualTo("Warehouse D");
+        assertThat(request.getLowStockThreshold()).isEqualTo(25);
+    }
+
+    @Test
+    @DisplayName("Should pass validation with valid InventoryUpdateRequest")
+    void shouldPassValidationWithValidFields() {
+        // Arrange
+        InventoryUpdateRequest request = InventoryUpdateRequest.builder()
+                .quantity(30)
+                .warehouseLocation("Location East")
+                .lowStockThreshold(5)
+                .build();
+
+        // Act
+        Set<ConstraintViolation<InventoryUpdateRequest>> violations = validator.validate(request);
+
+        // Assert
+        assertThat(violations).isEmpty();
+    }
+
+    @Test
+    @DisplayName("Should fail validation when quantity is negative or warehouse location is blank")
+    void shouldFailValidationWithInvalidFields() {
+        // Arrange
+        InventoryUpdateRequest request = InventoryUpdateRequest.builder()
+                .quantity(-10)
+                .warehouseLocation("")
+                .lowStockThreshold(5)
+                .build();
+
+        // Act
+        Set<ConstraintViolation<InventoryUpdateRequest>> violations = validator.validate(request);
+
+        // Assert
+        assertThat(violations).hasSize(2);
     }
 }

@@ -7,6 +7,7 @@ import com.amazonscale.cart.entity.CurrencyCode;
 import com.amazonscale.cart.service.CartService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -23,7 +24,7 @@ import org.springframework.web.method.support.HandlerMethodArgumentResolver;
 import org.springframework.web.method.support.ModelAndViewContainer;
 
 import java.math.BigDecimal;
-import java.util.Collections;
+import java.util.List;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
@@ -47,27 +48,31 @@ class CartControllerTest {
 
     @BeforeEach
     void setUp() {
-        objectMapper = new ObjectMapper();
+        HandlerMethodArgumentResolver authenticationPrincipalResolver = new HandlerMethodArgumentResolver() {
+            @Override
+            public boolean supportsParameter(MethodParameter parameter) {
+                return parameter.hasParameterAnnotation(AuthenticationPrincipal.class);
+            }
+
+            @Override
+            public Object resolveArgument(MethodParameter parameter,
+                                          ModelAndViewContainer mavContainer,
+                                          NativeWebRequest webRequest,
+                                          WebDataBinderFactory binderFactory) {
+                return 1L;
+            }
+        };
 
         mockMvc = MockMvcBuilders.standaloneSetup(cartController)
-                .setCustomArgumentResolvers(new HandlerMethodArgumentResolver() {
-                    @Override
-                    public boolean supportsParameter(MethodParameter parameter) {
-                        return parameter.hasParameterAnnotation(AuthenticationPrincipal.class);
-                    }
-
-                    @Override
-                    public Object resolveArgument(MethodParameter parameter, ModelAndViewContainer mavContainer,
-                                                  NativeWebRequest webRequest, WebDataBinderFactory binderFactory) {
-                        return 1L; // Mock user ID 1L
-                    }
-                })
+                .setCustomArgumentResolvers(authenticationPrincipalResolver)
                 .build();
+
+        objectMapper = new ObjectMapper();
 
         sampleCartResponse = CartResponse.builder()
                 .cartId(100L)
                 .userId(1L)
-                .items(Collections.emptyList())
+                .items(List.of())
                 .totalItems(0)
                 .totalAmount(BigDecimal.ZERO)
                 .currency(CurrencyCode.INR)
@@ -75,7 +80,9 @@ class CartControllerTest {
     }
 
     @Test
-    void testAddItemToCartSuccess() throws Exception {
+    @DisplayName("Should add item to cart successfully and return HTTP 201 Created")
+    void shouldAddItemToCartSuccessfully() throws Exception {
+        // Arrange
         AddToCartRequest request = AddToCartRequest.builder()
                 .productId(10L)
                 .quantity(2)
@@ -83,6 +90,7 @@ class CartControllerTest {
 
         when(cartService.addItemToCart(eq(1L), any(AddToCartRequest.class))).thenReturn(sampleCartResponse);
 
+        // Act & Assert
         mockMvc.perform(post("/api/v1/cart/items")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
@@ -94,21 +102,27 @@ class CartControllerTest {
     }
 
     @Test
-    void testAddItemToCartValidationError() throws Exception {
-        AddToCartRequest request = new AddToCartRequest(); // missing productId and quantity
+    @DisplayName("Should return HTTP 400 Bad Request when AddToCartRequest fails Bean Validation")
+    void shouldReturnBadRequestWhenAddToCartValidationFails() throws Exception {
+        // Arrange
+        AddToCartRequest invalidRequest = new AddToCartRequest(); // null productId & quantity
 
+        // Act & Assert
         mockMvc.perform(post("/api/v1/cart/items")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(request)))
+                        .content(objectMapper.writeValueAsString(invalidRequest)))
                 .andExpect(status().isBadRequest());
 
         verify(cartService, never()).addItemToCart(any(), any());
     }
 
     @Test
-    void testGetCartSuccess() throws Exception {
+    @DisplayName("Should get user cart and return HTTP 200 OK")
+    void shouldGetCartSuccessfully() throws Exception {
+        // Arrange
         when(cartService.getCart(1L)).thenReturn(sampleCartResponse);
 
+        // Act & Assert
         mockMvc.perform(get("/api/v1/cart"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.cartId").value(100L));
@@ -117,13 +131,17 @@ class CartControllerTest {
     }
 
     @Test
-    void testUpdateCartItemSuccess() throws Exception {
+    @DisplayName("Should update cart item quantity and return HTTP 200 OK")
+    void shouldUpdateCartItemSuccessfully() throws Exception {
+        // Arrange
         UpdateCartItemRequest request = UpdateCartItemRequest.builder()
                 .quantity(5)
                 .build();
 
-        when(cartService.updateCartItem(eq(1L), eq(10L), any(UpdateCartItemRequest.class))).thenReturn(sampleCartResponse);
+        when(cartService.updateCartItem(eq(1L), eq(10L), any(UpdateCartItemRequest.class)))
+                .thenReturn(sampleCartResponse);
 
+        // Act & Assert
         mockMvc.perform(put("/api/v1/cart/items/10")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
@@ -134,9 +152,12 @@ class CartControllerTest {
     }
 
     @Test
-    void testRemoveItemFromCartSuccess() throws Exception {
+    @DisplayName("Should remove item from cart and return HTTP 204 No Content")
+    void shouldRemoveItemFromCartSuccessfully() throws Exception {
+        // Arrange
         doNothing().when(cartService).removeCartItem(1L, 10L);
 
+        // Act & Assert
         mockMvc.perform(delete("/api/v1/cart/items/10"))
                 .andExpect(status().isNoContent());
 
@@ -144,9 +165,12 @@ class CartControllerTest {
     }
 
     @Test
-    void testClearCartSuccess() throws Exception {
+    @DisplayName("Should clear cart and return HTTP 204 No Content")
+    void shouldClearCartSuccessfully() throws Exception {
+        // Arrange
         doNothing().when(cartService).clearCart(1L);
 
+        // Act & Assert
         mockMvc.perform(delete("/api/v1/cart"))
                 .andExpect(status().isNoContent());
 

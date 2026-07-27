@@ -5,6 +5,7 @@ import com.amazonscale.product.dto.ProductResponse;
 import com.amazonscale.product.service.ProductService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -46,6 +47,7 @@ class ProductControllerTest {
                 .id(1L)
                 .name("Smartphone")
                 .description("Latest smartphone")
+                .imageUrl("https://example.com/image.jpg")
                 .price(new BigDecimal("699.99"))
                 .stock(50)
                 .brand("TechBrand")
@@ -54,7 +56,8 @@ class ProductControllerTest {
     }
 
     @Test
-    void testCreateProductSuccess() throws Exception {
+    @DisplayName("Should create product successfully and return HTTP 201 Created with ProductResponse")
+    void shouldCreateProductSuccessfully() throws Exception {
         // Arrange
         ProductRequest request = new ProductRequest();
         request.setName("Smartphone");
@@ -72,14 +75,16 @@ class ProductControllerTest {
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.id").value(1L))
-                .andExpect(jsonPath("$.name").value("Smartphone"));
+                .andExpect(jsonPath("$.name").value("Smartphone"))
+                .andExpect(jsonPath("$.brand").value("TechBrand"));
 
         verify(productService, times(1)).createProduct(any(ProductRequest.class));
     }
 
     @Test
-    void testCreateProductValidationError() throws Exception {
-        // Arrange - missing required fields
+    @DisplayName("Should return HTTP 400 Bad Request when creating product with missing required fields")
+    void shouldReturnBadRequestWhenCreateProductValidationFails() throws Exception {
+        // Arrange
         ProductRequest request = new ProductRequest();
 
         // Act & Assert
@@ -92,7 +97,8 @@ class ProductControllerTest {
     }
 
     @Test
-    void testGetProductSuccess() throws Exception {
+    @DisplayName("Should return product by ID and HTTP 200 OK when product exists")
+    void shouldGetProductByIdSuccessfully() throws Exception {
         // Arrange
         when(productService.getProduct(1L)).thenReturn(sampleResponse);
 
@@ -100,13 +106,15 @@ class ProductControllerTest {
         mockMvc.perform(get("/api/v1/products/1"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.id").value(1L))
+                .andExpect(jsonPath("$.name").value("Smartphone"))
                 .andExpect(jsonPath("$.brand").value("TechBrand"));
 
         verify(productService, times(1)).getProduct(1L);
     }
 
     @Test
-    void testGetAllProductsSuccess() throws Exception {
+    @DisplayName("Should return all products list and HTTP 200 OK")
+    void shouldGetAllProductsSuccessfully() throws Exception {
         // Arrange
         when(productService.getAllProducts()).thenReturn(List.of(sampleResponse));
 
@@ -120,7 +128,8 @@ class ProductControllerTest {
     }
 
     @Test
-    void testUpdateProductSuccess() throws Exception {
+    @DisplayName("Should update product by ID and return HTTP 200 OK")
+    void shouldUpdateProductSuccessfully() throws Exception {
         // Arrange
         ProductRequest request = new ProductRequest();
         request.setName("Smartphone Pro");
@@ -143,7 +152,8 @@ class ProductControllerTest {
     }
 
     @Test
-    void testDeleteProductSuccess() throws Exception {
+    @DisplayName("Should delete product by ID and return HTTP 204 No Content")
+    void shouldDeleteProductSuccessfully() throws Exception {
         // Arrange
         doNothing().when(productService).deleteProduct(1L);
 
@@ -152,5 +162,17 @@ class ProductControllerTest {
                 .andExpect(status().isNoContent());
 
         verify(productService, times(1)).deleteProduct(1L);
+    }
+
+    @Test
+    @DisplayName("Should build ProductController using Builder pattern")
+    void shouldBuildProductControllerUsingBuilder() {
+        // Arrange & Act
+        ProductController controller = ProductController.builder()
+                .productService(productService)
+                .build();
+
+        // Assert
+        org.assertj.core.api.Assertions.assertThat(controller).isNotNull();
     }
 }

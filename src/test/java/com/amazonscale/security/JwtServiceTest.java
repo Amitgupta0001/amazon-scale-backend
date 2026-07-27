@@ -1,12 +1,19 @@
 package com.amazonscale.security;
 
-import com.amazonscale.user.enums.Role;
 import com.amazonscale.user.entity.User;
+import com.amazonscale.user.enums.Role;
+import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.ExpiredJwtException;
+import io.jsonwebtoken.MalformedJwtException;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.test.util.ReflectionTestUtils;
 
-import static org.junit.jupiter.api.Assertions.*;
+import java.util.Date;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class JwtServiceTest {
 
@@ -32,16 +39,17 @@ class JwtServiceTest {
     }
 
     @Test
+    @DisplayName("Should generate valid non-empty JWT token for UserDetails")
     void shouldGenerateJwtSuccessfully() {
         // Act
         String token = jwtService.generateToken(userDetails);
 
         // Assert
-        assertNotNull(token);
-        assertFalse(token.isEmpty());
+        assertThat(token).isNotNull().isNotEmpty();
     }
 
     @Test
+    @DisplayName("Should extract username from valid JWT token")
     void shouldExtractUsername() {
         // Arrange
         String token = jwtService.generateToken(userDetails);
@@ -50,10 +58,26 @@ class JwtServiceTest {
         String username = jwtService.extractUsername(token);
 
         // Assert
-        assertEquals("user@example.com", username);
+        assertThat(username).isEqualTo("user@example.com");
     }
 
     @Test
+    @DisplayName("Should extract arbitrary claims using custom claims resolver")
+    void shouldExtractClaimUsingCustomResolver() {
+        // Arrange
+        String token = jwtService.generateToken(userDetails);
+
+        // Act
+        Date expiration = jwtService.extractClaim(token, Claims::getExpiration);
+        Date issuedAt = jwtService.extractClaim(token, Claims::getIssuedAt);
+
+        // Assert
+        assertThat(expiration).isNotNull().isAfter(new Date());
+        assertThat(issuedAt).isNotNull().isBeforeOrEqualTo(new Date());
+    }
+
+    @Test
+    @DisplayName("Should validate token successfully when token is valid and user matches")
     void shouldValidateTokenSuccessfully() {
         // Arrange
         String token = jwtService.generateToken(userDetails);
@@ -62,10 +86,11 @@ class JwtServiceTest {
         boolean isValid = jwtService.isTokenValid(token, userDetails);
 
         // Assert
-        assertTrue(isValid);
+        assertThat(isValid).isTrue();
     }
 
     @Test
+    @DisplayName("Should fail validation when token username does not match user details")
     void shouldFailValidationWhenUsernameDoesNotMatch() {
         // Arrange
         String token = jwtService.generateToken(userDetails);
@@ -82,24 +107,32 @@ class JwtServiceTest {
         boolean isValid = jwtService.isTokenValid(token, differentUserDetails);
 
         // Assert
-        assertFalse(isValid);
+        assertThat(isValid).isFalse();
     }
 
     @Test
-    void shouldFailValidationWhenTokenIsExpired() {
+    @DisplayName("Should throw ExpiredJwtException when validating an expired token")
+    void shouldThrowExpiredJwtExceptionWhenTokenIsExpired() {
         // Arrange
         ReflectionTestUtils.setField(jwtService, "jwtExpiration", -1000L); // Negative expiration
         String expiredToken = jwtService.generateToken(userDetails);
 
-        // Reset expiration
+        // Reset expiration for parsing check
         ReflectionTestUtils.setField(jwtService, "jwtExpiration", testExpiration);
 
         // Act & Assert
-        try {
-            jwtService.isTokenValid(expiredToken, userDetails);
-        } catch (Exception ex) {
-            // ExpiredJwtException expected during claim parsing
-            assertNotNull(ex);
-        }
+        assertThatThrownBy(() -> jwtService.isTokenValid(expiredToken, userDetails))
+                .isInstanceOf(ExpiredJwtException.class);
+    }
+
+    @Test
+    @DisplayName("Should throw MalformedJwtException when token structure is invalid")
+    void shouldThrowMalformedJwtExceptionWhenTokenIsMalformed() {
+        // Arrange
+        String invalidToken = "invalid.jwt.token";
+
+        // Act & Assert
+        assertThatThrownBy(() -> jwtService.extractUsername(invalidToken))
+                .isInstanceOf(MalformedJwtException.class);
     }
 }

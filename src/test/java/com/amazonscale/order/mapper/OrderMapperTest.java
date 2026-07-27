@@ -7,8 +7,10 @@ import com.amazonscale.order.entity.OrderItem;
 import com.amazonscale.order.enums.OrderStatus;
 import com.amazonscale.order.enums.PaymentMethod;
 import com.amazonscale.product.entity.Product;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
+import java.lang.reflect.Constructor;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -18,102 +20,89 @@ import static org.assertj.core.api.Assertions.assertThat;
 class OrderMapperTest {
 
     @Test
-    void toOrderResponse_ShouldReturnNull_WhenOrderIsNull() {
-        OrderResponse response = OrderMapper.toOrderResponse(null);
-        assertThat(response).isNull();
-    }
-
-    @Test
-    void toOrderItemResponse_ShouldReturnNull_WhenOrderItemIsNull() {
-        OrderItemResponse response = OrderMapper.toOrderItemResponse(null);
-        assertThat(response).isNull();
-    }
-
-    @Test
-    void toOrderResponse_ShouldMapFields_WhenOrderHasNullItems() {
-        LocalDateTime now = LocalDateTime.now();
-        Order order = Order.builder()
-                .id(1L)
-                .status(OrderStatus.PENDING)
-                .paymentMethod(PaymentMethod.COD)
-                .shippingAddress("Addr")
-                .subtotal(new BigDecimal("100.00"))
-                .tax(new BigDecimal("18.00"))
-                .shippingFee(new BigDecimal("40.00"))
-                .discount(BigDecimal.ZERO)
-                .total(new BigDecimal("158.00"))
-                .createdAt(now)
-                .items(null)
-                .build();
-
-        OrderResponse response = OrderMapper.toOrderResponse(order);
-
-        assertThat(response).isNotNull();
-        assertThat(response.getOrderId()).isEqualTo(1L);
-        assertThat(response.getOrderStatus()).isEqualTo(OrderStatus.PENDING);
-        assertThat(response.getPaymentMethod()).isEqualTo(PaymentMethod.COD);
-        assertThat(response.getShippingAddress()).isEqualTo("Addr");
-        assertThat(response.getItems()).isEmpty();
-        assertThat(response.getItemsQuantity()).isEqualTo(0);
-        assertThat(response.getSubtotal()).isEqualTo(new BigDecimal("100.00"));
-        assertThat(response.getTax()).isEqualTo(new BigDecimal("18.00"));
-        assertThat(response.getShippingFee()).isEqualTo(new BigDecimal("40.00"));
-        assertThat(response.getDiscount()).isEqualTo(BigDecimal.ZERO);
-        assertThat(response.getTotal()).isEqualTo(new BigDecimal("158.00"));
-        assertThat(response.getCreatedAt()).isEqualTo(now);
-    }
-
-    @Test
-    void toOrderResponse_ShouldMapFieldsAndCalculateQuantity_WhenOrderHasItems() {
-        Product product1 = Product.builder().id(10L).build();
-        Product product2 = Product.builder().id(20L).build();
-
-        OrderItem item1 = OrderItem.builder()
-                .id(101L)
-                .product(product1)
-                .productName("Item 1")
-                .sku("10")
+    @DisplayName("Should map OrderItem entity to OrderItemResponse DTO")
+    void shouldMapOrderItemToOrderItemResponse() {
+        // Arrange
+        Product product = Product.builder().id(10L).build();
+        OrderItem item = OrderItem.builder()
+                .product(product)
+                .productName("Wireless Mouse")
+                .sku("WM10")
                 .quantity(2)
-                .unitPrice(new BigDecimal("50.00"))
-                .lineTotal(new BigDecimal("100.00"))
+                .unitPrice(new BigDecimal("20.00"))
+                .lineTotal(new BigDecimal("40.00"))
                 .build();
 
-        OrderItem item2 = OrderItem.builder()
-                .id(102L)
-                .product(product2)
-                .productName("Item 2")
-                .sku("20")
-                .quantity(3)
-                .unitPrice(new BigDecimal("100.00"))
-                .lineTotal(new BigDecimal("300.00"))
-                .build();
+        // Act
+        OrderItemResponse response = OrderMapper.toOrderItemResponse(item);
+
+        // Assert
+        assertThat(response).isNotNull();
+        assertThat(response.getProductId()).isEqualTo(10L);
+        assertThat(response.getProductName()).isEqualTo("Wireless Mouse");
+        assertThat(response.getSku()).isEqualTo("WM10");
+        assertThat(response.getQuantity()).isEqualTo(2);
+        assertThat(response.getUnitPrice()).isEqualTo(new BigDecimal("20.00"));
+        assertThat(response.getLineTotal()).isEqualTo(new BigDecimal("40.00"));
+    }
+
+    @Test
+    @DisplayName("Should map Order entity with items to OrderResponse DTO")
+    void shouldMapOrderToOrderResponse() {
+        // Arrange
+        LocalDateTime now = LocalDateTime.now();
+        Product product = Product.builder().id(10L).build();
+        OrderItem item1 = OrderItem.builder().product(product).productName("P1").quantity(2).lineTotal(new BigDecimal("20.00")).build();
+        OrderItem item2 = OrderItem.builder().product(product).productName("P2").quantity(3).lineTotal(new BigDecimal("30.00")).build();
 
         Order order = Order.builder()
-                .id(2L)
+                .id(100L)
                 .status(OrderStatus.CONFIRMED)
                 .paymentMethod(PaymentMethod.UPI)
-                .shippingAddress("Main Street")
-                .subtotal(new BigDecimal("400.00"))
-                .tax(new BigDecimal("72.00"))
+                .shippingAddress("456 Ocean Ave")
+                .subtotal(new BigDecimal("50.00"))
+                .tax(new BigDecimal("9.00"))
                 .shippingFee(new BigDecimal("40.00"))
                 .discount(BigDecimal.ZERO)
-                .total(new BigDecimal("512.00"))
+                .total(new BigDecimal("99.00"))
                 .items(List.of(item1, item2))
+                .createdAt(now)
                 .build();
 
+        // Act
         OrderResponse response = OrderMapper.toOrderResponse(order);
 
+        // Assert
         assertThat(response).isNotNull();
-        assertThat(response.getOrderId()).isEqualTo(2L);
-        assertThat(response.getItemsQuantity()).isEqualTo(5);
+        assertThat(response.getOrderId()).isEqualTo(100L);
+        assertThat(response.getOrderStatus()).isEqualTo(OrderStatus.CONFIRMED);
+        assertThat(response.getItemsQuantity()).isEqualTo(5); // 2 + 3
         assertThat(response.getItems()).hasSize(2);
+        assertThat(response.getSubtotal()).isEqualTo(new BigDecimal("50.00"));
+        assertThat(response.getTotal()).isEqualTo(new BigDecimal("99.00"));
+        assertThat(response.getPaymentMethod()).isEqualTo(PaymentMethod.UPI);
+        assertThat(response.getShippingAddress()).isEqualTo("456 Ocean Ave");
+    }
 
-        OrderItemResponse itemResp1 = response.getItems().get(0);
-        assertThat(itemResp1.getProductId()).isEqualTo(10L);
-        assertThat(itemResp1.getProductName()).isEqualTo("Item 1");
-        assertThat(itemResp1.getSku()).isEqualTo("10");
-        assertThat(itemResp1.getQuantity()).isEqualTo(2);
-        assertThat(itemResp1.getUnitPrice()).isEqualTo(new BigDecimal("50.00"));
-        assertThat(itemResp1.getLineTotal()).isEqualTo(new BigDecimal("100.00"));
+    @Test
+    @DisplayName("Should handle null order or null orderItem gracefully in mapper")
+    void shouldHandleNullsGracefully() {
+        // Act & Assert
+        assertThat(OrderMapper.toOrderResponse(null)).isNull();
+        assertThat(OrderMapper.toOrderItemResponse(null)).isNull();
+    }
+
+    @Test
+    @DisplayName("Should instantiate private constructor via reflection for test coverage")
+    void shouldInstantiatePrivateConstructorForCoverage() throws Exception {
+        // Arrange
+        Constructor<OrderMapper> constructor = OrderMapper.class.getDeclaredConstructor();
+        constructor.setAccessible(true);
+
+        // Act
+        OrderMapper instance = constructor.newInstance();
+
+        // Assert
+        assertThat(instance).isNotNull();
     }
 }

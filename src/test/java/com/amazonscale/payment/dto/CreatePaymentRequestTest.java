@@ -1,61 +1,76 @@
 package com.amazonscale.payment.dto;
 
 import com.amazonscale.payment.enums.PaymentGateway;
+import jakarta.validation.ConstraintViolation;
 import jakarta.validation.Validation;
 import jakarta.validation.Validator;
 import jakarta.validation.ValidatorFactory;
-import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+
+import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
 class CreatePaymentRequestTest {
 
-    private Validator validator;
+    private static Validator validator;
 
-    @BeforeEach
-    void setUp() {
+    @BeforeAll
+    static void setUpValidator() {
         ValidatorFactory factory = Validation.buildDefaultValidatorFactory();
         validator = factory.getValidator();
     }
 
     @Test
-    void testGettersAndSetters() {
-        CreatePaymentRequest request = new CreatePaymentRequest();
-        request.setOrderId(100L);
+    @DisplayName("Should build CreatePaymentRequest using Builder and verify getters/setters")
+    void shouldBuildCreatePaymentRequestAndVerifyGettersSetters() {
+        // Act
+        CreatePaymentRequest request = CreatePaymentRequest.builder()
+                .orderId(100L)
+                .gateway(PaymentGateway.RAZORPAY)
+                .build();
+
+        // Assert
+        assertThat(request.getOrderId()).isEqualTo(100L);
+        assertThat(request.getGateway()).isEqualTo(PaymentGateway.RAZORPAY);
+
+        // Act - Setters
+        request.setOrderId(200L);
         request.setGateway(PaymentGateway.STRIPE);
 
-        assertThat(request.getOrderId()).isEqualTo(100L);
+        // Assert
+        assertThat(request.getOrderId()).isEqualTo(200L);
         assertThat(request.getGateway()).isEqualTo(PaymentGateway.STRIPE);
     }
 
     @Test
-    void testBuilderAndAllArgsConstructor() {
+    @DisplayName("Should pass validation when all fields are present")
+    void shouldPassValidationWithValidFields() {
+        // Arrange
         CreatePaymentRequest request = CreatePaymentRequest.builder()
-                .orderId(200L)
-                .gateway(PaymentGateway.RAZORPAY)
-                .build();
-
-        assertThat(request.getOrderId()).isEqualTo(200L);
-        assertThat(request.getGateway()).isEqualTo(PaymentGateway.RAZORPAY);
-    }
-
-    @Test
-    void testValidation_Success() {
-        CreatePaymentRequest request = CreatePaymentRequest.builder()
-                .orderId(1L)
+                .orderId(10L)
                 .gateway(PaymentGateway.PAYPAL)
                 .build();
 
-        var violations = validator.validate(request);
+        // Act
+        Set<ConstraintViolation<CreatePaymentRequest>> violations = validator.validate(request);
+
+        // Assert
         assertThat(violations).isEmpty();
     }
 
     @Test
-    void testValidation_NullFields() {
+    @DisplayName("Should fail validation when orderId or gateway is null")
+    void shouldFailValidationWhenFieldsAreNull() {
+        // Arrange
         CreatePaymentRequest request = new CreatePaymentRequest();
 
-        var violations = validator.validate(request);
+        // Act
+        Set<ConstraintViolation<CreatePaymentRequest>> violations = validator.validate(request);
+
+        // Assert
         assertThat(violations).hasSize(2);
     }
 }

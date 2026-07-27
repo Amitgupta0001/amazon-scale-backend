@@ -6,6 +6,7 @@ import com.amazonscale.product.entity.Product;
 import com.amazonscale.product.exception.ProductNotFoundException;
 import com.amazonscale.product.repository.ProductRepository;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -16,7 +17,8 @@ import java.math.BigDecimal;
 import java.util.List;
 import java.util.Optional;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
@@ -38,6 +40,7 @@ class ProductServiceImplTest {
                 .id(1L)
                 .name("Tablet")
                 .description("10-inch Tablet")
+                .imageUrl("https://example.com/tablet.jpg")
                 .price(new BigDecimal("299.99"))
                 .stock(20)
                 .brand("TechBrand")
@@ -47,13 +50,15 @@ class ProductServiceImplTest {
         request = new ProductRequest();
         request.setName("Tablet");
         request.setDescription("10-inch Tablet");
+        request.setImageUrl("https://example.com/tablet.jpg");
         request.setPrice(new BigDecimal("299.99"));
         request.setStock(20);
         request.setBrand("TechBrand");
     }
 
     @Test
-    void createProductSuccess() {
+    @DisplayName("Should successfully create a new product and return ProductResponse")
+    void shouldCreateProductSuccessfully() {
         // Arrange
         when(repository.save(any(Product.class))).thenReturn(product);
 
@@ -61,14 +66,17 @@ class ProductServiceImplTest {
         ProductResponse response = productService.createProduct(request);
 
         // Assert
-        assertNotNull(response);
-        assertEquals(1L, response.getId());
-        assertEquals("Tablet", response.getName());
+        assertThat(response).isNotNull();
+        assertThat(response.getId()).isEqualTo(1L);
+        assertThat(response.getName()).isEqualTo("Tablet");
+        assertThat(response.getPrice()).isEqualTo(new BigDecimal("299.99"));
+
         verify(repository, times(1)).save(any(Product.class));
     }
 
     @Test
-    void getProductSuccess() {
+    @DisplayName("Should successfully get product by ID when product exists")
+    void shouldGetProductByIdSuccessfully() {
         // Arrange
         when(repository.findById(1L)).thenReturn(Optional.of(product));
 
@@ -76,21 +84,30 @@ class ProductServiceImplTest {
         ProductResponse response = productService.getProduct(1L);
 
         // Assert
-        assertNotNull(response);
-        assertEquals(1L, response.getId());
+        assertThat(response).isNotNull();
+        assertThat(response.getId()).isEqualTo(1L);
+        assertThat(response.getName()).isEqualTo("Tablet");
+
+        verify(repository).findById(1L);
     }
 
     @Test
-    void shouldThrowProductNotFoundExceptionWhenIdDoesNotExist() {
+    @DisplayName("Should throw ProductNotFoundException when getting product by non-existent ID")
+    void shouldThrowProductNotFoundExceptionWhenGettingNonExistentProduct() {
         // Arrange
         when(repository.findById(99L)).thenReturn(Optional.empty());
 
         // Act & Assert
-        assertThrows(ProductNotFoundException.class, () -> productService.getProduct(99L));
+        assertThatThrownBy(() -> productService.getProduct(99L))
+                .isInstanceOf(ProductNotFoundException.class)
+                .hasMessageContaining("Product not found with id :99");
+
+        verify(repository).findById(99L);
     }
 
     @Test
-    void getAllProductsSuccess() {
+    @DisplayName("Should return list of ProductResponse for all existing products")
+    void shouldGetAllProductsSuccessfully() {
         // Arrange
         when(repository.findAll()).thenReturn(List.of(product));
 
@@ -98,27 +115,57 @@ class ProductServiceImplTest {
         List<ProductResponse> responses = productService.getAllProducts();
 
         // Assert
-        assertEquals(1, responses.size());
-        assertEquals(1L, responses.get(0).getId());
+        assertThat(responses).hasSize(1);
+        assertThat(responses.get(0).getId()).isEqualTo(1L);
+        assertThat(responses.get(0).getName()).isEqualTo("Tablet");
+
+        verify(repository).findAll();
     }
 
     @Test
-    void updateProductSuccess() {
+    @DisplayName("Should update product fields successfully when product exists")
+    void shouldUpdateProductSuccessfully() {
         // Arrange
+        ProductRequest updateRequest = new ProductRequest();
+        updateRequest.setName("Updated Tablet");
+        updateRequest.setDescription("Updated description");
+        updateRequest.setImageUrl("https://example.com/updated.jpg");
+        updateRequest.setPrice(new BigDecimal("349.99"));
+        updateRequest.setStock(15);
+        updateRequest.setBrand("TechBrandPro");
+
         when(repository.findById(1L)).thenReturn(Optional.of(product));
         when(repository.save(any(Product.class))).thenReturn(product);
 
         // Act
-        ProductResponse response = productService.updateProduct(1L, request);
+        ProductResponse response = productService.updateProduct(1L, updateRequest);
 
         // Assert
-        assertNotNull(response);
-        assertEquals(1L, response.getId());
-        verify(repository, times(1)).save(product);
+        assertThat(response).isNotNull();
+        assertThat(response.getId()).isEqualTo(1L);
+
+        verify(repository).findById(1L);
+        verify(repository).save(product);
     }
 
     @Test
-    void deleteProductSuccess() {
+    @DisplayName("Should throw ProductNotFoundException when updating non-existent product")
+    void shouldThrowProductNotFoundExceptionWhenUpdatingNonExistentProduct() {
+        // Arrange
+        when(repository.findById(99L)).thenReturn(Optional.empty());
+
+        // Act & Assert
+        assertThatThrownBy(() -> productService.updateProduct(99L, request))
+                .isInstanceOf(ProductNotFoundException.class)
+                .hasMessageContaining("99");
+
+        verify(repository).findById(99L);
+        verify(repository, never()).save(any(Product.class));
+    }
+
+    @Test
+    @DisplayName("Should delete product successfully when product exists")
+    void shouldDeleteProductSuccessfully() {
         // Arrange
         when(repository.findById(1L)).thenReturn(Optional.of(product));
 
@@ -126,6 +173,34 @@ class ProductServiceImplTest {
         productService.deleteProduct(1L);
 
         // Assert
-        verify(repository, times(1)).delete(product);
+        verify(repository).findById(1L);
+        verify(repository).delete(product);
+    }
+
+    @Test
+    @DisplayName("Should throw ProductNotFoundException when deleting non-existent product")
+    void shouldThrowProductNotFoundExceptionWhenDeletingNonExistentProduct() {
+        // Arrange
+        when(repository.findById(99L)).thenReturn(Optional.empty());
+
+        // Act & Assert
+        assertThatThrownBy(() -> productService.deleteProduct(99L))
+                .isInstanceOf(ProductNotFoundException.class)
+                .hasMessageContaining("99");
+
+        verify(repository).findById(99L);
+        verify(repository, never()).delete(any(Product.class));
+    }
+
+    @Test
+    @DisplayName("Should build ProductServiceImpl using Builder pattern")
+    void shouldBuildProductServiceImplUsingBuilder() {
+        // Arrange & Act
+        ProductServiceImpl service = ProductServiceImpl.builder()
+                .repository(repository)
+                .build();
+
+        // Assert
+        assertThat(service).isNotNull();
     }
 }

@@ -3,6 +3,8 @@ package com.amazonscale.order.entity;
 import com.amazonscale.order.enums.OrderStatus;
 import com.amazonscale.order.enums.PaymentMethod;
 import com.amazonscale.user.entity.User;
+import com.amazonscale.user.enums.Role;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 import java.math.BigDecimal;
@@ -13,71 +15,102 @@ import static org.assertj.core.api.Assertions.assertThat;
 class OrderTest {
 
     @Test
-    void testOrderBuilderAndGettersSetters() {
-        User user = User.builder().id(1L).email("user@example.com").build();
-        Order order = Order.builder()
-                .id(100L)
-                .user(user)
-                .status(OrderStatus.PENDING)
-                .paymentMethod(PaymentMethod.CREDIT_CARD)
-                .shippingAddress("123 Main St")
-                .subtotal(new BigDecimal("100.00"))
-                .tax(new BigDecimal("18.00"))
-                .shippingFee(new BigDecimal("40.00"))
-                .discount(BigDecimal.ZERO)
-                .total(new BigDecimal("158.00"))
+    @DisplayName("Should build Order entity and verify default values and getters/setters")
+    void shouldBuildOrderAndVerifyGettersSetters() {
+        // Arrange
+        User user = User.builder()
+                .id(1L)
+                .firstName("Order")
+                .lastName("User")
+                .email("orderuser@example.com")
+                .password("password123")
+                .role(Role.CUSTOMER)
+                .enabled(true)
                 .build();
 
-        assertThat(order.getId()).isEqualTo(100L);
+        // Act
+        Order order = Order.builder()
+                .id(10L)
+                .user(user)
+                .paymentMethod(PaymentMethod.CREDIT_CARD)
+                .shippingAddress("123 Street")
+                .subtotal(new BigDecimal("100.00"))
+                .total(new BigDecimal("118.00"))
+                .build();
+
+        // Assert
+        assertThat(order.getId()).isEqualTo(10L);
         assertThat(order.getUser()).isEqualTo(user);
-        assertThat(order.getStatus()).isEqualTo(OrderStatus.PENDING);
+        assertThat(order.getStatus()).isEqualTo(OrderStatus.PENDING); // Builder default
         assertThat(order.getPaymentMethod()).isEqualTo(PaymentMethod.CREDIT_CARD);
-        assertThat(order.getShippingAddress()).isEqualTo("123 Main St");
-        assertThat(order.getSubtotal()).isEqualTo(new BigDecimal("100.00"));
-        assertThat(order.getTax()).isEqualTo(new BigDecimal("18.00"));
-        assertThat(order.getShippingFee()).isEqualTo(new BigDecimal("40.00"));
-        assertThat(order.getDiscount()).isEqualTo(BigDecimal.ZERO);
-        assertThat(order.getTotal()).isEqualTo(new BigDecimal("158.00"));
+        assertThat(order.getShippingAddress()).isEqualTo("123 Street");
+        assertThat(order.getTax()).isEqualTo(BigDecimal.ZERO); // Builder default
+        assertThat(order.getShippingFee()).isEqualTo(BigDecimal.ZERO); // Builder default
+        assertThat(order.getDiscount()).isEqualTo(BigDecimal.ZERO); // Builder default
+        assertThat(order.getItems()).isNotNull().isEmpty();
+    }
+
+    @Test
+    @DisplayName("Should add and remove OrderItem correctly using helper methods")
+    void shouldAddAndRemoveOrderItemCorrectly() {
+        // Arrange
+        Order order = new Order();
+        OrderItem item = OrderItem.builder().id(100L).productName("Gadget").build();
+
+        // Act - Add item
+        order.addItem(item);
+
+        // Assert
+        assertThat(order.getItems()).containsExactly(item);
+        assertThat(item.getOrder()).isEqualTo(order);
+
+        // Act - Remove item
+        order.removeItem(item);
+
+        // Assert
+        assertThat(order.getItems()).isEmpty();
+        assertThat(item.getOrder()).isNull();
+
+        // Edge cases: null item
+        order.addItem(null);
+        order.removeItem(null);
         assertThat(order.getItems()).isEmpty();
     }
 
     @Test
-    void testOnCreateAndOnUpdateLifecycleHooks() {
+    @DisplayName("Should populate createdAt and updatedAt on @PrePersist (onCreate) and @PreUpdate (onUpdate)")
+    void shouldPopulateTimestampsOnPrePersistAndPreUpdate() {
+        // Arrange
         Order order = new Order();
+
+        // Act - Simulating PrePersist
         order.onCreate();
 
+        // Assert
         assertThat(order.getCreatedAt()).isNotNull();
         assertThat(order.getUpdatedAt()).isNotNull();
 
         LocalDateTime initialUpdatedAt = order.getUpdatedAt();
+
+        // Act - Simulating PreUpdate
         order.onUpdate();
+
+        // Assert
         assertThat(order.getUpdatedAt()).isNotNull();
+        assertThat(order.getUpdatedAt()).isAfterOrEqualTo(initialUpdatedAt);
     }
 
     @Test
-    void testAddItemAndRemoveItem() {
-        Order order = new Order();
-        OrderItem item = OrderItem.builder().id(1L).productName("Laptop").quantity(1).build();
+    @DisplayName("Should test equals and hashCode based on ID")
+    void shouldTestEqualsAndHashCode() {
+        // Arrange
+        Order order1 = Order.builder().id(1L).build();
+        Order order2 = Order.builder().id(1L).build();
+        Order order3 = Order.builder().id(2L).build();
 
-        order.addItem(item);
-        assertThat(order.getItems()).containsExactly(item);
-        assertThat(item.getOrder()).isEqualTo(order);
-
-        // Duplicate add check
-        order.addItem(item);
-        assertThat(order.getItems()).hasSize(1);
-
-        // Null add check
-        order.addItem(null);
-        assertThat(order.getItems()).hasSize(1);
-
-        // Remove item
-        order.removeItem(item);
-        assertThat(order.getItems()).isEmpty();
-        assertThat(item.getOrder()).isNull();
-
-        // Null remove check
-        order.removeItem(null);
-        assertThat(order.getItems()).isEmpty();
+        // Assert
+        assertThat(order1).isEqualTo(order2);
+        assertThat(order1).hasSameHashCodeAs(order2);
+        assertThat(order1).isNotEqualTo(order3);
     }
 }

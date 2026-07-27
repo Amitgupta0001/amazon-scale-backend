@@ -12,6 +12,7 @@ import com.amazonscale.product.entity.Product;
 import com.amazonscale.product.exception.ProductNotFoundException;
 import com.amazonscale.product.repository.ProductRepository;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -21,7 +22,8 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import java.util.List;
 import java.util.Optional;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
@@ -39,169 +41,200 @@ class InventoryServiceImplTest {
 
     private Product product;
     private Inventory inventory;
+    private InventoryRequest createRequest;
+    private InventoryUpdateRequest updateRequest;
 
     @BeforeEach
     void setUp() {
         product = Product.builder()
-                .id(1L)
-                .name("Laptop")
-                .description("Gaming Laptop")
+                .id(10L)
+                .name("Smartwatch")
                 .build();
 
         inventory = Inventory.builder()
-                .id(100L)
+                .id(1L)
                 .product(product)
-                .quantity(50)
-                .reservedQuantity(5)
-                .warehouseLocation("Section A")
-                .lowStockThreshold(10)
+                .quantity(100)
+                .reservedQuantity(10)
+                .warehouseLocation("Location A")
+                .lowStockThreshold(15)
+                .build();
+
+        createRequest = new InventoryRequest();
+        createRequest.setProductId(10L);
+        createRequest.setQuantity(100);
+        createRequest.setWarehouseLocation("Location A");
+        createRequest.setLowStockThreshold(15);
+
+        updateRequest = InventoryUpdateRequest.builder()
+                .quantity(120)
+                .warehouseLocation("Location B")
+                .lowStockThreshold(20)
                 .build();
     }
 
     @Test
-    void createInventorySuccess() {
+    @DisplayName("Should create inventory successfully when product exists and inventory does not exist yet")
+    void shouldCreateInventorySuccessfully() {
         // Arrange
-        InventoryRequest request = new InventoryRequest();
-        request.setProductId(1L);
-        request.setQuantity(50);
-        request.setWarehouseLocation("Section A");
-        request.setLowStockThreshold(10);
-
-        when(productRepository.findById(1L)).thenReturn(Optional.of(product));
-        when(inventoryRepository.existsByProductId(1L)).thenReturn(false);
+        when(productRepository.findById(10L)).thenReturn(Optional.of(product));
+        when(inventoryRepository.existsByProductId(10L)).thenReturn(false);
         when(inventoryRepository.save(any(Inventory.class))).thenReturn(inventory);
 
         // Act
-        InventoryResponse response = inventoryService.createInventory(request);
+        InventoryResponse response = inventoryService.createInventory(createRequest);
 
         // Assert
-        assertNotNull(response);
-        assertEquals(100L, response.getId());
-        assertEquals("Laptop", response.getProductName());
-        verify(inventoryRepository, times(1)).save(any(Inventory.class));
+        assertThat(response).isNotNull();
+        assertThat(response.getId()).isEqualTo(1L);
+        assertThat(response.getProductId()).isEqualTo(10L);
+        assertThat(response.getProductName()).isEqualTo("Smartwatch");
+
+        verify(productRepository).findById(10L);
+        verify(inventoryRepository).existsByProductId(10L);
+        verify(inventoryRepository).save(any(Inventory.class));
     }
 
     @Test
-    void shouldThrowProductNotFoundWhenCreatingInventoryForMissingProduct() {
+    @DisplayName("Should throw ProductNotFoundException when creating inventory for non-existent product ID")
+    void shouldThrowProductNotFoundExceptionWhenCreatingInventoryForInvalidProduct() {
         // Arrange
-        InventoryRequest request = new InventoryRequest();
-        request.setProductId(99L);
-
         when(productRepository.findById(99L)).thenReturn(Optional.empty());
+        createRequest.setProductId(99L);
 
         // Act & Assert
-        assertThrows(ProductNotFoundException.class, () -> inventoryService.createInventory(request));
+        assertThatThrownBy(() -> inventoryService.createInventory(createRequest))
+                .isInstanceOf(ProductNotFoundException.class)
+                .hasMessageContaining("99");
+
+        verify(inventoryRepository, never()).save(any(Inventory.class));
     }
 
     @Test
-    void shouldThrowInventoryAlreadyExistsWhenCreatingDuplicateInventory() {
+    @DisplayName("Should throw InventoryAlreadyExistsException when inventory for product ID already exists")
+    void shouldThrowInventoryAlreadyExistsExceptionWhenDuplicateProduct() {
         // Arrange
-        InventoryRequest request = new InventoryRequest();
-        request.setProductId(1L);
-
-        when(productRepository.findById(1L)).thenReturn(Optional.of(product));
-        when(inventoryRepository.existsByProductId(1L)).thenReturn(true);
+        when(productRepository.findById(10L)).thenReturn(Optional.of(product));
+        when(inventoryRepository.existsByProductId(10L)).thenReturn(true);
 
         // Act & Assert
-        assertThrows(InventoryAlreadyExistsException.class, () -> inventoryService.createInventory(request));
+        assertThatThrownBy(() -> inventoryService.createInventory(createRequest))
+                .isInstanceOf(InventoryAlreadyExistsException.class)
+                .hasMessageContaining("10");
+
+        verify(inventoryRepository, never()).save(any(Inventory.class));
     }
 
     @Test
-    void updateInventorySuccess() {
+    @DisplayName("Should update inventory successfully when new quantity >= reserved quantity")
+    void shouldUpdateInventorySuccessfully() {
         // Arrange
-        InventoryUpdateRequest updateRequest = InventoryUpdateRequest.builder()
-                .quantity(60)
-                .warehouseLocation("Section B")
-                .lowStockThreshold(15)
-                .build();
-
-        when(inventoryRepository.findById(100L)).thenReturn(Optional.of(inventory));
+        when(inventoryRepository.findById(1L)).thenReturn(Optional.of(inventory));
         when(inventoryRepository.save(any(Inventory.class))).thenReturn(inventory);
 
         // Act
-        InventoryResponse response = inventoryService.updateInventory(100L, updateRequest);
+        InventoryResponse response = inventoryService.updateInventory(1L, updateRequest);
 
         // Assert
-        assertNotNull(response);
-        assertEquals(60, inventory.getQuantity());
-        verify(inventoryRepository, times(1)).save(inventory);
+        assertThat(response).isNotNull();
+        assertThat(response.getId()).isEqualTo(1L);
+
+        verify(inventoryRepository).findById(1L);
+        verify(inventoryRepository).save(inventory);
     }
 
     @Test
-    void shouldThrowInsufficientStockWhenUpdateQuantityBelowReserved() {
+    @DisplayName("Should throw InsufficientStockException when update quantity is less than reserved quantity")
+    void shouldThrowInsufficientStockExceptionWhenQuantityLessThanReserved() {
         // Arrange
-        InventoryUpdateRequest updateRequest = InventoryUpdateRequest.builder()
-                .quantity(2) // lower than reserved quantity (5)
-                .warehouseLocation("Section B")
-                .lowStockThreshold(15)
-                .build();
-
-        when(inventoryRepository.findById(100L)).thenReturn(Optional.of(inventory));
+        updateRequest.setQuantity(5); // Reserved is 10
+        when(inventoryRepository.findById(1L)).thenReturn(Optional.of(inventory));
 
         // Act & Assert
-        assertThrows(InsufficientStockException.class, () -> inventoryService.updateInventory(100L, updateRequest));
+        assertThatThrownBy(() -> inventoryService.updateInventory(1L, updateRequest))
+                .isInstanceOf(InsufficientStockException.class)
+                .hasMessage("Quantity cannot be less than reserved quantity.");
+
+        verify(inventoryRepository, never()).save(any(Inventory.class));
     }
 
     @Test
-    void getInventoryByIdSuccess() {
+    @DisplayName("Should get inventory by ID successfully")
+    void shouldGetInventoryByIdSuccessfully() {
         // Arrange
-        when(inventoryRepository.findById(100L)).thenReturn(Optional.of(inventory));
+        when(inventoryRepository.findById(1L)).thenReturn(Optional.of(inventory));
 
         // Act
-        InventoryResponse response = inventoryService.getInventoryById(100L);
+        InventoryResponse response = inventoryService.getInventoryById(1L);
 
         // Assert
-        assertNotNull(response);
-        assertEquals(100L, response.getId());
+        assertThat(response).isNotNull();
+        assertThat(response.getId()).isEqualTo(1L);
+
+        verify(inventoryRepository).findById(1L);
     }
 
     @Test
-    void shouldThrowInventoryNotFoundWhenGetByIdFails() {
+    @DisplayName("Should throw InventoryNotFoundException when getting inventory by non-existent ID")
+    void shouldThrowInventoryNotFoundExceptionWhenGettingInvalidId() {
         // Arrange
-        when(inventoryRepository.findById(999L)).thenReturn(Optional.empty());
+        when(inventoryRepository.findById(99L)).thenReturn(Optional.empty());
 
         // Act & Assert
-        assertThrows(InventoryNotFoundException.class, () -> inventoryService.getInventoryById(999L));
+        assertThatThrownBy(() -> inventoryService.getInventoryById(99L))
+                .isInstanceOf(InventoryNotFoundException.class)
+                .hasMessageContaining("99");
     }
 
     @Test
-    void getInventoryByProductIdSuccess() {
+    @DisplayName("Should get inventory by Product ID successfully")
+    void shouldGetInventoryByProductIdSuccessfully() {
         // Arrange
-        when(inventoryRepository.findByProductId(1L)).thenReturn(Optional.of(inventory));
+        when(inventoryRepository.findByProductId(10L)).thenReturn(Optional.of(inventory));
 
         // Act
-        InventoryResponse response = inventoryService.getInventoryByProductId(1L);
+        InventoryResponse response = inventoryService.getInventoryByProductId(10L);
 
         // Assert
-        assertNotNull(response);
-        assertEquals(100L, response.getId());
+        assertThat(response).isNotNull();
+        assertThat(response.getProductId()).isEqualTo(10L);
+
+        verify(inventoryRepository).findByProductId(10L);
     }
 
     @Test
-    void deleteInventoryByIdSuccess() {
+    @DisplayName("Should delete inventory by ID when reserved quantity is zero")
+    void shouldDeleteInventorySuccessfullyWhenNoReservedStock() {
         // Arrange
         inventory.setReservedQuantity(0);
-        when(inventoryRepository.findById(100L)).thenReturn(Optional.of(inventory));
+        when(inventoryRepository.findById(1L)).thenReturn(Optional.of(inventory));
 
         // Act
-        inventoryService.deleteInventoryById(100L);
+        inventoryService.deleteInventoryById(1L);
 
         // Assert
-        verify(inventoryRepository, times(1)).delete(inventory);
+        verify(inventoryRepository).findById(1L);
+        verify(inventoryRepository).delete(inventory);
     }
 
     @Test
-    void shouldThrowInsufficientStockWhenDeletingInventoryWithReservedStock() {
+    @DisplayName("Should throw InsufficientStockException when deleting inventory with reserved stock > 0")
+    void shouldThrowInsufficientStockExceptionWhenDeletingWithReservedStock() {
         // Arrange
         inventory.setReservedQuantity(5);
-        when(inventoryRepository.findById(100L)).thenReturn(Optional.of(inventory));
+        when(inventoryRepository.findById(1L)).thenReturn(Optional.of(inventory));
 
         // Act & Assert
-        assertThrows(InsufficientStockException.class, () -> inventoryService.deleteInventoryById(100L));
+        assertThatThrownBy(() -> inventoryService.deleteInventoryById(1L))
+                .isInstanceOf(InsufficientStockException.class)
+                .hasMessage("Cannot delete inventory with reserved stock.");
+
+        verify(inventoryRepository, never()).delete(any(Inventory.class));
     }
 
     @Test
-    void getAllInventorySuccess() {
+    @DisplayName("Should return all inventories list")
+    void shouldGetAllInventorySuccessfully() {
         // Arrange
         when(inventoryRepository.findAll()).thenReturn(List.of(inventory));
 
@@ -209,7 +242,9 @@ class InventoryServiceImplTest {
         List<InventoryResponse> responses = inventoryService.getAllInventory();
 
         // Assert
-        assertEquals(1, responses.size());
-        assertEquals(100L, responses.get(0).getId());
+        assertThat(responses).hasSize(1);
+        assertThat(responses.get(0).getId()).isEqualTo(1L);
+
+        verify(inventoryRepository).findAll();
     }
 }

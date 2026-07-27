@@ -1,18 +1,23 @@
 package com.amazonscale.inventory.exception;
 
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.assertj.core.api.Assertions.assertThat;
 
 class InsufficientStockExceptionTest {
 
     @Test
-    void shouldCreateExceptionWithMessage() {
+    @DisplayName("Should create InsufficientStockException with custom message")
+    void shouldCreateInsufficientStockExceptionWithCustomMessage() {
+        // Arrange
+        String message = "Not enough stock available";
+
         // Act
-        InsufficientStockException exception = new InsufficientStockException("Out of stock");
+        InsufficientStockException exception = new InsufficientStockException(message);
 
         // Assert
-        assertEquals("Out of stock", exception.getMessage());
-        assertTrue(exception instanceof RuntimeException);
+        assertThat(exception).isNotNull();
+        assertThat(exception.getMessage()).isEqualTo(message);
     }
 }

@@ -1,8 +1,9 @@
 package com.amazonscale.security;
 
-import com.amazonscale.user.enums.Role;
 import com.amazonscale.user.entity.User;
+import com.amazonscale.user.enums.Role;
 import com.amazonscale.user.repository.UserRepository;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -15,6 +16,7 @@ import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -27,29 +29,56 @@ class CustomUserDetailsServiceTest {
     private CustomUserDetailsService customUserDetailsService;
 
     @Test
-    void loadUserByUsername_Success() {
+    @DisplayName("Should successfully load UserDetails when user exists by email")
+    void shouldLoadUserByUsernameSuccessfullyWhenUserExists() {
+        // Arrange
+        String email = "user@example.com";
         User user = User.builder()
                 .id(1L)
-                .email("user@example.com")
+                .email(email)
                 .password("password123")
                 .role(Role.CUSTOMER)
                 .enabled(true)
                 .build();
 
-        when(userRepository.findByEmail("user@example.com")).thenReturn(Optional.of(user));
+        when(userRepository.findByEmail(email)).thenReturn(Optional.of(user));
 
-        UserDetails userDetails = customUserDetailsService.loadUserByUsername("user@example.com");
+        // Act
+        UserDetails userDetails = customUserDetailsService.loadUserByUsername(email);
 
+        // Assert
         assertThat(userDetails).isNotNull();
-        assertThat(userDetails.getUsername()).isEqualTo("user@example.com");
+        assertThat(userDetails.getUsername()).isEqualTo(email);
+        assertThat(userDetails.getPassword()).isEqualTo("password123");
+        assertThat(userDetails.isEnabled()).isTrue();
+
+        verify(userRepository).findByEmail(email);
     }
 
     @Test
-    void loadUserByUsername_NotFound_ThrowsException() {
-        when(userRepository.findByEmail("notfound@example.com")).thenReturn(Optional.empty());
+    @DisplayName("Should throw UsernameNotFoundException when user is not found by email")
+    void shouldThrowUsernameNotFoundExceptionWhenUserDoesNotExist() {
+        // Arrange
+        String email = "notfound@example.com";
+        when(userRepository.findByEmail(email)).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> customUserDetailsService.loadUserByUsername("notfound@example.com"))
+        // Act & Assert
+        assertThatThrownBy(() -> customUserDetailsService.loadUserByUsername(email))
                 .isInstanceOf(UsernameNotFoundException.class)
-                .hasMessageContaining("notfound@example.com");
+                .hasMessageContaining("User not found with email: " + email);
+
+        verify(userRepository).findByEmail(email);
+    }
+
+    @Test
+    @DisplayName("Should build CustomUserDetailsService using Builder pattern")
+    void shouldBuildCustomUserDetailsServiceUsingBuilder() {
+        // Arrange & Act
+        CustomUserDetailsService service = CustomUserDetailsService.builder()
+                .userRepository(userRepository)
+                .build();
+
+        // Assert
+        assertThat(service).isNotNull();
     }
 }

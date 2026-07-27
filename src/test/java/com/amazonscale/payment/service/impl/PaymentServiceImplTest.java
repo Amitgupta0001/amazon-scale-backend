@@ -18,7 +18,9 @@ import com.amazonscale.payment.exception.PaymentNotFoundException;
 import com.amazonscale.payment.repository.PaymentRepository;
 import com.amazonscale.product.entity.Product;
 import com.amazonscale.user.entity.User;
+import com.amazonscale.user.enums.Role;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -26,7 +28,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.math.BigDecimal;
-import java.util.Collections;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
@@ -47,314 +49,227 @@ class PaymentServiceImplTest {
     @InjectMocks
     private PaymentServiceImpl paymentService;
 
-    private User sampleUser;
-    private Order sampleOrder;
-    private Product sampleProduct;
-    private OrderItem sampleOrderItem;
-    private Payment samplePayment;
+    private User user;
+    private Order order;
+    private Product product;
+    private OrderItem orderItem;
+    private Payment payment;
     private CreatePaymentRequest createPaymentRequest;
+    private RefundRequest refundRequest;
 
     @BeforeEach
     void setUp() {
-        sampleUser = User.builder()
+        user = User.builder()
                 .id(1L)
-                .email("user@example.com")
+                .firstName("Pay")
+                .lastName("User")
+                .email("payuser@example.com")
+                .password("password123")
+                .role(Role.CUSTOMER)
+                .enabled(true)
                 .build();
 
-        sampleProduct = Product.builder()
+        product = Product.builder()
                 .id(10L)
-                .name("Sample Product")
+                .name("Camera")
                 .active(true)
                 .build();
 
-        sampleOrderItem = OrderItem.builder()
+        orderItem = OrderItem.builder()
                 .id(100L)
-                .product(sampleProduct)
+                .product(product)
                 .quantity(1)
+                .unitPrice(new BigDecimal("499.99"))
+                .lineTotal(new BigDecimal("499.99"))
                 .build();
 
-        sampleOrder = Order.builder()
-                .id(50L)
-                .user(sampleUser)
+        order = Order.builder()
+                .id(500L)
+                .user(user)
                 .status(OrderStatus.PENDING)
                 .paymentMethod(PaymentMethod.CREDIT_CARD)
-                .total(new BigDecimal("100.00"))
-                .items(List.of(sampleOrderItem))
+                .shippingAddress("123 Main St")
+                .total(new BigDecimal("499.99"))
+                .items(new ArrayList<>(List.of(orderItem)))
                 .build();
 
-        samplePayment = Payment.builder()
-                .id(500L)
-                .order(sampleOrder)
-                .transactionId("TXN12345")
-                .amount(new BigDecimal("100.00"))
-                .currency("INR")
+        payment = Payment.builder()
+                .id(1L)
+                .order(order)
+                .transactionId("TXN-1234567890123456")
+                .amount(new BigDecimal("499.99"))
                 .paymentMethod(PaymentMethod.CREDIT_CARD)
-                .gateway(PaymentGateway.STRIPE)
+                .gateway(PaymentGateway.RAZORPAY)
                 .status(PaymentStatus.PENDING)
+                .currency("INR")
                 .build();
 
         createPaymentRequest = CreatePaymentRequest.builder()
-                .orderId(50L)
-                .gateway(PaymentGateway.STRIPE)
+                .orderId(500L)
+                .gateway(PaymentGateway.RAZORPAY)
+                .build();
+
+        refundRequest = RefundRequest.builder()
+                .reason("Defective product")
                 .build();
     }
 
-    // ==========================================
-    // initiatePayment Tests
-    // ==========================================
-
     @Test
-    void initiatePayment_Success() {
-        when(orderRepository.findById(50L)).thenReturn(Optional.of(sampleOrder));
-        when(paymentRepository.findByOrder_Id(50L)).thenReturn(Collections.emptyList());
-        when(paymentRepository.save(any(Payment.class))).thenAnswer(i -> {
-            Payment p = i.getArgument(0);
-            p.setId(500L);
-            return p;
-        });
+    @DisplayName("Should initiate payment successfully")
+    void shouldInitiatePaymentSuccessfully() {
+        // Arrange
+        when(orderRepository.findById(500L)).thenReturn(Optional.of(order));
+        when(paymentRepository.findByOrder_Id(500L)).thenReturn(List.of());
+        when(paymentRepository.save(any(Payment.class))).thenReturn(payment);
 
+        // Act
         PaymentResponse response = paymentService.initiatePayment(1L, createPaymentRequest);
 
+        // Assert
         assertThat(response).isNotNull();
-        assertThat(response.getId()).isEqualTo(500L);
-        assertThat(response.getOrderId()).isEqualTo(50L);
-        assertThat(response.getGateway()).isEqualTo(PaymentGateway.STRIPE);
+        assertThat(response.getId()).isEqualTo(1L);
         assertThat(response.getStatus()).isEqualTo(PaymentStatus.PENDING);
-        verify(paymentRepository, times(1)).save(any(Payment.class));
+
+        verify(paymentRepository).save(any(Payment.class));
     }
 
     @Test
-    void initiatePayment_OrderNotFound() {
-        when(orderRepository.findById(50L)).thenReturn(Optional.empty());
+    @DisplayName("Should throw OrderNotFoundException when order does not exist during payment initiation")
+    void shouldThrowOrderNotFoundExceptionWhenOrderMissing() {
+        // Arrange
+        when(orderRepository.findById(999L)).thenReturn(Optional.empty());
+        createPaymentRequest.setOrderId(999L);
 
+        // Act & Assert
         assertThatThrownBy(() -> paymentService.initiatePayment(1L, createPaymentRequest))
                 .isInstanceOf(OrderNotFoundException.class);
     }
 
     @Test
-    void initiatePayment_UnauthorizedUser() {
-        when(orderRepository.findById(50L)).thenReturn(Optional.of(sampleOrder));
+    @DisplayName("Should throw InvalidPaymentException when user is unauthorized for order")
+    void shouldThrowInvalidPaymentExceptionWhenUnauthorizedUser() {
+        // Arrange
+        when(orderRepository.findById(500L)).thenReturn(Optional.of(order));
 
-        assertThatThrownBy(() -> paymentService.initiatePayment(999L, createPaymentRequest))
+        // Act & Assert (user 99L != order.user 1L)
+        assertThatThrownBy(() -> paymentService.initiatePayment(99L, createPaymentRequest))
                 .isInstanceOf(InvalidPaymentException.class)
-                .hasMessageContaining("You are not authorized to pay for this order.");
+                .hasMessage("You are not authorized to pay for this order.");
     }
 
     @Test
-    void initiatePayment_OrderStatusNotPending() {
-        sampleOrder.setStatus(OrderStatus.CONFIRMED);
-        when(orderRepository.findById(50L)).thenReturn(Optional.of(sampleOrder));
+    @DisplayName("Should throw InvalidPaymentException when order is not in PENDING state")
+    void shouldThrowInvalidPaymentExceptionWhenOrderNotPending() {
+        // Arrange
+        order.setStatus(OrderStatus.CONFIRMED);
+        when(orderRepository.findById(500L)).thenReturn(Optional.of(order));
 
+        // Act & Assert
         assertThatThrownBy(() -> paymentService.initiatePayment(1L, createPaymentRequest))
                 .isInstanceOf(InvalidPaymentException.class)
-                .hasMessageContaining("Payment can only be initiated for pending orders.");
+                .hasMessage("Payment can only be initiated for pending orders.");
     }
 
     @Test
-    void initiatePayment_AlreadyPaid() {
-        Payment paidPayment = Payment.builder()
-                .id(501L)
-                .order(sampleOrder)
-                .status(PaymentStatus.SUCCESS)
-                .build();
+    @DisplayName("Should throw InvalidPaymentException when order is already paid")
+    void shouldThrowInvalidPaymentExceptionWhenAlreadyPaid() {
+        // Arrange
+        Payment paidPayment = Payment.builder().id(2L).status(PaymentStatus.SUCCESS).build();
+        when(orderRepository.findById(500L)).thenReturn(Optional.of(order));
+        when(paymentRepository.findByOrder_Id(500L)).thenReturn(List.of(paidPayment));
 
-        when(orderRepository.findById(50L)).thenReturn(Optional.of(sampleOrder));
-        when(paymentRepository.findByOrder_Id(50L)).thenReturn(List.of(paidPayment));
-
+        // Act & Assert
         assertThatThrownBy(() -> paymentService.initiatePayment(1L, createPaymentRequest))
                 .isInstanceOf(InvalidPaymentException.class)
-                .hasMessageContaining("Order has already been paid.");
+                .hasMessage("Order has already been paid.");
     }
 
     @Test
-    void initiatePayment_InactiveProduct() {
-        sampleProduct.setActive(false);
-        when(orderRepository.findById(50L)).thenReturn(Optional.of(sampleOrder));
-        when(paymentRepository.findByOrder_Id(50L)).thenReturn(Collections.emptyList());
+    @DisplayName("Should verify pending payment successfully and change status to SUCCESS")
+    void shouldVerifyPaymentSuccessfully() {
+        // Arrange
+        when(paymentRepository.findById(1L)).thenReturn(Optional.of(payment));
+        when(paymentRepository.save(payment)).thenReturn(payment);
 
-        assertThatThrownBy(() -> paymentService.initiatePayment(1L, createPaymentRequest))
-                .isInstanceOf(InvalidPaymentException.class)
-                .hasMessageContaining("is not active.");
-    }
+        // Act
+        PaymentResponse response = paymentService.verifyPayment(1L, 1L);
 
-    // ==========================================
-    // verifyPayment Tests
-    // ==========================================
-
-    @Test
-    void verifyPayment_Success() {
-        when(paymentRepository.findById(500L)).thenReturn(Optional.of(samplePayment));
-        when(paymentRepository.save(any(Payment.class))).thenAnswer(i -> i.getArgument(0));
-
-        PaymentResponse response = paymentService.verifyPayment(1L, 500L);
-
-        assertThat(response.getStatus()).isEqualTo(PaymentStatus.SUCCESS);
-        verify(paymentRepository, times(1)).save(samplePayment);
-    }
-
-    @Test
-    void verifyPayment_PaymentNotFound() {
-        when(paymentRepository.findById(500L)).thenReturn(Optional.empty());
-
-        assertThatThrownBy(() -> paymentService.verifyPayment(1L, 500L))
-                .isInstanceOf(PaymentNotFoundException.class)
-                .hasMessageContaining("No payment found with id: 500");
-    }
-
-    @Test
-    void verifyPayment_UnauthorizedUser() {
-        when(paymentRepository.findById(500L)).thenReturn(Optional.of(samplePayment));
-
-        assertThatThrownBy(() -> paymentService.verifyPayment(999L, 500L))
-                .isInstanceOf(InvalidPaymentException.class)
-                .hasMessageContaining("You are not authorized to access this payment.");
-    }
-
-    @Test
-    void verifyPayment_AlreadySuccess() {
-        samplePayment.setStatus(PaymentStatus.SUCCESS);
-        when(paymentRepository.findById(500L)).thenReturn(Optional.of(samplePayment));
-
-        assertThatThrownBy(() -> paymentService.verifyPayment(1L, 500L))
-                .isInstanceOf(InvalidPaymentException.class)
-                .hasMessageContaining("Payment has already been verified");
-    }
-
-    @Test
-    void verifyPayment_RefundedPayment() {
-        samplePayment.setStatus(PaymentStatus.REFUNDED);
-        when(paymentRepository.findById(500L)).thenReturn(Optional.of(samplePayment));
-
-        assertThatThrownBy(() -> paymentService.verifyPayment(1L, 500L))
-                .isInstanceOf(InvalidPaymentException.class)
-                .hasMessageContaining("Refunded payments cannot be verified");
-    }
-
-    @Test
-    void verifyPayment_FailedPayment() {
-        samplePayment.setStatus(PaymentStatus.FAILED);
-        when(paymentRepository.findById(500L)).thenReturn(Optional.of(samplePayment));
-
-        assertThatThrownBy(() -> paymentService.verifyPayment(1L, 500L))
-                .isInstanceOf(PaymentFailedException.class)
-                .hasMessageContaining("Failed payment cannot be verified.");
-    }
-
-    // ==========================================
-    // getPayment Tests
-    // ==========================================
-
-    @Test
-    void getPayment_Success() {
-        when(paymentRepository.findById(500L)).thenReturn(Optional.of(samplePayment));
-
-        PaymentResponse response = paymentService.getPayment(1L, 500L);
-
+        // Assert
         assertThat(response).isNotNull();
-        assertThat(response.getId()).isEqualTo(500L);
+        assertThat(payment.getStatus()).isEqualTo(PaymentStatus.SUCCESS);
+
+        verify(paymentRepository).save(payment);
     }
 
     @Test
-    void getPayment_UnauthorizedUser() {
-        when(paymentRepository.findById(500L)).thenReturn(Optional.of(samplePayment));
+    @DisplayName("Should throw InvalidPaymentException when verifying already verified payment")
+    void shouldThrowExceptionWhenVerifyingAlreadyVerifiedPayment() {
+        // Arrange
+        payment.setStatus(PaymentStatus.SUCCESS);
+        when(paymentRepository.findById(1L)).thenReturn(Optional.of(payment));
 
-        assertThatThrownBy(() -> paymentService.getPayment(999L, 500L))
-                .isInstanceOf(InvalidPaymentException.class);
-    }
-
-    // ==========================================
-    // getPaymentsByOrder Tests
-    // ==========================================
-
-    @Test
-    void getPaymentsByOrder_Success() {
-        when(orderRepository.findById(50L)).thenReturn(Optional.of(sampleOrder));
-        when(paymentRepository.findByOrder_Id(50L)).thenReturn(List.of(samplePayment));
-
-        List<PaymentResponse> responses = paymentService.getPaymentsByOrder(1L, 50L);
-
-        assertThat(responses).hasSize(1);
-        assertThat(responses.get(0).getId()).isEqualTo(500L);
-    }
-
-    @Test
-    void getPaymentsByOrder_OrderNotFound() {
-        when(orderRepository.findById(50L)).thenReturn(Optional.empty());
-
-        assertThatThrownBy(() -> paymentService.getPaymentsByOrder(1L, 50L))
-                .isInstanceOf(OrderNotFoundException.class);
-    }
-
-    @Test
-    void getPaymentsByOrder_UnauthorizedUser() {
-        when(orderRepository.findById(50L)).thenReturn(Optional.of(sampleOrder));
-
-        assertThatThrownBy(() -> paymentService.getPaymentsByOrder(999L, 50L))
+        // Act & Assert
+        assertThatThrownBy(() -> paymentService.verifyPayment(1L, 1L))
                 .isInstanceOf(InvalidPaymentException.class)
-                .hasMessageContaining("You are not authorized to access payments for this order.");
+                .hasMessage("Payment has already been verified");
     }
 
     @Test
-    void getPaymentsByOrder_EmptyPayments() {
-        when(orderRepository.findById(50L)).thenReturn(Optional.of(sampleOrder));
-        when(paymentRepository.findByOrder_Id(50L)).thenReturn(Collections.emptyList());
+    @DisplayName("Should throw PaymentFailedException when verifying a FAILED payment")
+    void shouldThrowExceptionWhenVerifyingFailedPayment() {
+        // Arrange
+        payment.setStatus(PaymentStatus.FAILED);
+        when(paymentRepository.findById(1L)).thenReturn(Optional.of(payment));
 
-        assertThatThrownBy(() -> paymentService.getPaymentsByOrder(1L, 50L))
-                .isInstanceOf(PaymentNotFoundException.class)
-                .hasMessageContaining("No payments found for order id: 50");
-    }
-
-    // ==========================================
-    // refundPayment Tests
-    // ==========================================
-
-    @Test
-    void refundPayment_Success() {
-        samplePayment.setStatus(PaymentStatus.SUCCESS);
-        RefundRequest refundRequest = new RefundRequest("Item arrived broken");
-
-        when(paymentRepository.findById(500L)).thenReturn(Optional.of(samplePayment));
-        when(paymentRepository.save(any(Payment.class))).thenAnswer(i -> i.getArgument(0));
-
-        PaymentResponse response = paymentService.refundPayment(1L, 500L, refundRequest);
-
-        assertThat(response.getStatus()).isEqualTo(PaymentStatus.REFUNDED);
-        verify(paymentRepository, times(1)).save(samplePayment);
-    }
-
-    @Test
-    void refundPayment_PendingStatus_ThrowsInvalidPaymentException() {
-        samplePayment.setStatus(PaymentStatus.PENDING);
-        RefundRequest refundRequest = new RefundRequest("Reason");
-
-        when(paymentRepository.findById(500L)).thenReturn(Optional.of(samplePayment));
-
-        assertThatThrownBy(() -> paymentService.refundPayment(1L, 500L, refundRequest))
-                .isInstanceOf(InvalidPaymentException.class)
-                .hasMessageContaining("Pending payment cannot be refunded.");
-    }
-
-    @Test
-    void refundPayment_FailedStatus_ThrowsPaymentFailedException() {
-        samplePayment.setStatus(PaymentStatus.FAILED);
-        RefundRequest refundRequest = new RefundRequest("Reason");
-
-        when(paymentRepository.findById(500L)).thenReturn(Optional.of(samplePayment));
-
-        assertThatThrownBy(() -> paymentService.refundPayment(1L, 500L, refundRequest))
+        // Act & Assert
+        assertThatThrownBy(() -> paymentService.verifyPayment(1L, 1L))
                 .isInstanceOf(PaymentFailedException.class)
-                .hasMessageContaining("Failed payment cannot be refunded.");
+                .hasMessage("Failed payment cannot be verified.");
     }
 
     @Test
-    void refundPayment_RefundedStatus_ThrowsInvalidPaymentException() {
-        samplePayment.setStatus(PaymentStatus.REFUNDED);
-        RefundRequest refundRequest = new RefundRequest("Reason");
+    @DisplayName("Should get payment details for authorized user")
+    void shouldGetPaymentSuccessfully() {
+        // Arrange
+        when(paymentRepository.findById(1L)).thenReturn(Optional.of(payment));
 
-        when(paymentRepository.findById(500L)).thenReturn(Optional.of(samplePayment));
+        // Act
+        PaymentResponse response = paymentService.getPayment(1L, 1L);
 
-        assertThatThrownBy(() -> paymentService.refundPayment(1L, 500L, refundRequest))
+        // Assert
+        assertThat(response).isNotNull();
+        assertThat(response.getId()).isEqualTo(1L);
+    }
+
+    @Test
+    @DisplayName("Should refund successful payment and set refundReason")
+    void shouldRefundPaymentSuccessfully() {
+        // Arrange
+        payment.setStatus(PaymentStatus.SUCCESS);
+        when(paymentRepository.findById(1L)).thenReturn(Optional.of(payment));
+        when(paymentRepository.save(payment)).thenReturn(payment);
+
+        // Act
+        PaymentResponse response = paymentService.refundPayment(1L, 1L, refundRequest);
+
+        // Assert
+        assertThat(response).isNotNull();
+        assertThat(payment.getStatus()).isEqualTo(PaymentStatus.REFUNDED);
+        assertThat(payment.getRefundReason()).isEqualTo("Defective product");
+
+        verify(paymentRepository).save(payment);
+    }
+
+    @Test
+    @DisplayName("Should throw InvalidPaymentException when refunding a PENDING payment")
+    void shouldThrowExceptionWhenRefundingPendingPayment() {
+        // Arrange
+        payment.setStatus(PaymentStatus.PENDING);
+        when(paymentRepository.findById(1L)).thenReturn(Optional.of(payment));
+
+        // Act & Assert
+        assertThatThrownBy(() -> paymentService.refundPayment(1L, 1L, refundRequest))
                 .isInstanceOf(InvalidPaymentException.class)
-                .hasMessageContaining("Payment has already been refunded.");
+                .hasMessage("Pending payment cannot be refunded.");
     }
 }

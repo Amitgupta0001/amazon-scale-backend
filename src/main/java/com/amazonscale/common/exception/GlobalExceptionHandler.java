@@ -16,6 +16,7 @@ import com.amazonscale.payment.exception.PaymentNotFoundException;
 import com.amazonscale.product.exception.ProductInactiveException;
 import com.amazonscale.product.exception.ProductNotFoundException;
 import com.amazonscale.user.exception.EmailAlreadyExistsException;
+import com.amazonscale.wishlists.exception.*;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
@@ -319,6 +320,69 @@ public class GlobalExceptionHandler {
                 .build();
 
         return ResponseEntity.status(HttpStatus.PAYMENT_REQUIRED).body(error);
+    }
+
+    // Wishlist - Exceptions
+
+    @ExceptionHandler(WishlistNotFoundException.class)
+    public ResponseEntity<ErrorResponse> handleWishlistNotFound(
+            WishlistNotFoundException ex,
+            HttpServletRequest request) {
+
+        return buildErrorResponse(
+                HttpStatus.NOT_FOUND,
+                ex.getMessage(),
+                request
+        );
+    }
+
+
+    @ExceptionHandler(WishlistAlreadyExistsException.class)
+    public ResponseEntity<ErrorResponse> handleWishlistAlreadyExist(
+            WishlistAlreadyExistsException ex,
+            HttpServletRequest request) {
+
+        return buildErrorResponse(
+                HttpStatus.CONFLICT,
+                ex.getMessage(),
+                request
+        );
+    }
+
+    @ExceptionHandler(WishlistItemAlreadyExistsException.class)
+    public ResponseEntity<ErrorResponse> handleWishlistItemAlreadyExist(
+            WishlistItemAlreadyExistsException ex,
+            HttpServletRequest request){
+
+        return buildErrorResponse(
+                HttpStatus.CONFLICT,
+                ex.getMessage(),
+                request
+        );
+    }
+
+    @ExceptionHandler(WishlistItemNotFoundException.class)
+    public ResponseEntity<ErrorResponse> handleWishlistItemNotFound(
+            WishlistItemNotFoundException ex,
+            HttpServletRequest request){
+
+        return buildErrorResponse(
+                HttpStatus.NOT_FOUND,
+                ex.getMessage(),
+                request
+        );
+    }
+
+    @ExceptionHandler(DefaultWishlistModificationException.class)
+    public ResponseEntity<ErrorResponse> handleDefaultWishlistModificationException(
+            DefaultWishlistModificationException ex,
+            HttpServletRequest  request){
+
+        return buildErrorResponse(
+                HttpStatus.BAD_REQUEST,
+                ex.getMessage(),
+                request
+        );
     }
 
 }

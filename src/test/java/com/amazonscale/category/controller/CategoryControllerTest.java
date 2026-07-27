@@ -6,6 +6,7 @@ import com.amazonscale.category.dto.UpdateCategoryRequest;
 import com.amazonscale.category.service.CategoryService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -45,18 +46,20 @@ class CategoryControllerTest {
         sampleResponse = CategoryResponse.builder()
                 .id(1L)
                 .name("Electronics")
-                .description("Electronic gadgets")
-                .imageUrl("http://example.com/electronics.jpg")
+                .description("Gadgets & Devices")
+                .imageUrl("https://example.com/electronics.jpg")
                 .parentCategoryId(null)
                 .build();
     }
 
     @Test
-    void testCreateCategorySuccess() throws Exception {
+    @DisplayName("Should create category successfully and return HTTP 201 Created with CategoryResponse")
+    void shouldCreateCategorySuccessfully() throws Exception {
         // Arrange
         CreateCategoryRequest request = new CreateCategoryRequest();
         request.setName("Electronics");
-        request.setDescription("Electronic gadgets");
+        request.setDescription("Gadgets & Devices");
+        request.setImageUrl("https://example.com/electronics.jpg");
 
         when(categoryService.createCategory(any(CreateCategoryRequest.class))).thenReturn(sampleResponse);
 
@@ -72,7 +75,23 @@ class CategoryControllerTest {
     }
 
     @Test
-    void testGetCategorySuccess() throws Exception {
+    @DisplayName("Should return HTTP 400 Bad Request when CreateCategoryRequest fails validation")
+    void shouldReturnBadRequestWhenCreateCategoryValidationFails() throws Exception {
+        // Arrange
+        CreateCategoryRequest request = new CreateCategoryRequest(); // blank name
+
+        // Act & Assert
+        mockMvc.perform(post("/api/v1/categories")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest());
+
+        verify(categoryService, never()).createCategory(any(CreateCategoryRequest.class));
+    }
+
+    @Test
+    @DisplayName("Should get category by ID and return HTTP 200 OK")
+    void shouldGetCategoryByIdSuccessfully() throws Exception {
         // Arrange
         when(categoryService.getCategoryById(1L)).thenReturn(sampleResponse);
 
@@ -86,7 +105,8 @@ class CategoryControllerTest {
     }
 
     @Test
-    void testGetAllCategoriesSuccess() throws Exception {
+    @DisplayName("Should get all categories list and return HTTP 200 OK")
+    void shouldGetAllCategoriesSuccessfully() throws Exception {
         // Arrange
         when(categoryService.getAllCategories()).thenReturn(List.of(sampleResponse));
 
@@ -100,10 +120,11 @@ class CategoryControllerTest {
     }
 
     @Test
-    void testUpdateCategorySuccess() throws Exception {
+    @DisplayName("Should update category by ID and return HTTP 200 OK")
+    void shouldUpdateCategorySuccessfully() throws Exception {
         // Arrange
         UpdateCategoryRequest request = new UpdateCategoryRequest();
-        request.setName("Consumer Electronics");
+        request.setName("Updated Electronics");
         request.setDescription("Updated desc");
 
         when(categoryService.updateCategory(eq(1L), any(UpdateCategoryRequest.class))).thenReturn(sampleResponse);
@@ -119,7 +140,8 @@ class CategoryControllerTest {
     }
 
     @Test
-    void testDeleteCategorySuccess() throws Exception {
+    @DisplayName("Should delete category by ID and return HTTP 204 No Content")
+    void shouldDeleteCategorySuccessfully() throws Exception {
         // Arrange
         doNothing().when(categoryService).deleteCategory(1L);
 
@@ -128,5 +150,17 @@ class CategoryControllerTest {
                 .andExpect(status().isNoContent());
 
         verify(categoryService, times(1)).deleteCategory(1L);
+    }
+
+    @Test
+    @DisplayName("Should build CategoryController using Builder pattern")
+    void shouldBuildCategoryControllerUsingBuilder() {
+        // Arrange & Act
+        CategoryController controller = CategoryController.builder()
+                .categoryService(categoryService)
+                .build();
+
+        // Assert
+        org.assertj.core.api.Assertions.assertThat(controller).isNotNull();
     }
 }

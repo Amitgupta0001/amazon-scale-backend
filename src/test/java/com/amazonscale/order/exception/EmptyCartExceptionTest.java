@@ -1,5 +1,6 @@
 package com.amazonscale.order.exception;
 
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -7,9 +8,16 @@ import static org.assertj.core.api.Assertions.assertThat;
 class EmptyCartExceptionTest {
 
     @Test
-    void testExceptionMessage() {
-        String message = "Cannot place order with an empty cart.";
-        EmptyCartException ex = new EmptyCartException(message);
-        assertThat(ex.getMessage()).isEqualTo(message);
+    @DisplayName("Should create EmptyCartException with custom message")
+    void shouldCreateEmptyCartExceptionWithCustomMessage() {
+        // Arrange
+        String message = "Cart is empty";
+
+        // Act
+        EmptyCartException exception = new EmptyCartException(message);
+
+        // Assert
+        assertThat(exception).isNotNull();
+        assertThat(exception.getMessage()).isEqualTo(message);
     }
 }

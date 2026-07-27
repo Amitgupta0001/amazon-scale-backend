@@ -2,18 +2,23 @@ package com.amazonscale.user.mapper;
 
 import com.amazonscale.user.dto.UserRequest;
 import com.amazonscale.user.dto.UserResponse;
-import com.amazonscale.user.enums.Role;
 import com.amazonscale.user.entity.User;
+import com.amazonscale.user.enums.Role;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
+import java.lang.reflect.Constructor;
+import java.lang.reflect.InvocationTargetException;
 import java.time.LocalDateTime;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class UserMapperTest {
 
     @Test
-    void toEntity() {
+    @DisplayName("Should correctly map UserRequest DTO to User entity")
+    void shouldMapUserRequestToUserEntity() {
         // Arrange
         UserRequest request = UserRequest.builder()
                 .firstName("Bob")
@@ -27,16 +32,17 @@ class UserMapperTest {
         User user = UserMapper.toEntity(request);
 
         // Assert
-        assertNotNull(user);
-        assertEquals("Bob", user.getFirstName());
-        assertEquals("Marley", user.getLastName());
-        assertEquals("bob@example.com", user.getEmail());
-        assertEquals("pass1234", user.getPassword());
-        assertEquals(Role.SELLER, user.getRole());
+        assertThat(user).isNotNull();
+        assertThat(user.getFirstName()).isEqualTo("Bob");
+        assertThat(user.getLastName()).isEqualTo("Marley");
+        assertThat(user.getEmail()).isEqualTo("bob@example.com");
+        assertThat(user.getPassword()).isEqualTo("pass1234");
+        assertThat(user.getRole()).isEqualTo(Role.SELLER);
     }
 
     @Test
-    void toResponse() {
+    @DisplayName("Should correctly map User entity to UserResponse DTO")
+    void shouldMapUserEntityToUserResponseDto() {
         // Arrange
         LocalDateTime now = LocalDateTime.now();
         User user = User.builder()
@@ -53,13 +59,26 @@ class UserMapperTest {
         UserResponse response = UserMapper.toResponse(user);
 
         // Assert
-        assertNotNull(response);
-        assertEquals(10L, response.getId());
-        assertEquals("Bob", response.getFirstName());
-        assertEquals("Marley", response.getLastName());
-        assertEquals("bob@example.com", response.getEmail());
-        assertEquals(Role.SELLER, response.getRole());
-        assertTrue(response.isEnabled());
-        assertEquals(now, response.getCreatedAt());
+        assertThat(response).isNotNull();
+        assertThat(response.getId()).isEqualTo(10L);
+        assertThat(response.getFirstName()).isEqualTo("Bob");
+        assertThat(response.getLastName()).isEqualTo("Marley");
+        assertThat(response.getEmail()).isEqualTo("bob@example.com");
+        assertThat(response.getRole()).isEqualTo(Role.SELLER);
+        assertThat(response.isEnabled()).isTrue();
+        assertThat(response.getCreatedAt()).isEqualTo(now);
+    }
+
+    @Test
+    @DisplayName("Should throw UnsupportedOperationException when invoking private constructor via reflection")
+    void shouldThrowUnsupportedOperationExceptionWhenInstantiatingPrivateConstructor() throws Exception {
+        // Arrange
+        Constructor<UserMapper> constructor = UserMapper.class.getDeclaredConstructor();
+        constructor.setAccessible(true);
+
+        // Act & Assert
+        assertThatThrownBy(constructor::newInstance)
+                .isInstanceOf(InvocationTargetException.class)
+                .hasCauseInstanceOf(UnsupportedOperationException.class);
     }
 }

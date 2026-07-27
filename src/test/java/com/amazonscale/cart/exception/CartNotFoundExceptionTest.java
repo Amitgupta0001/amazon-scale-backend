@@ -1,5 +1,6 @@
 package com.amazonscale.cart.exception;
 
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -7,8 +8,13 @@ import static org.assertj.core.api.Assertions.assertThat;
 class CartNotFoundExceptionTest {
 
     @Test
-    void testExceptionMessage() {
-        CartNotFoundException ex = new CartNotFoundException(50L);
-        assertThat(ex.getMessage()).contains("50");
+    @DisplayName("Should create CartNotFoundException with formatted message containing user ID")
+    void shouldCreateCartNotFoundExceptionWithCorrectMessage() {
+        // Arrange & Act
+        CartNotFoundException exception = new CartNotFoundException(5L);
+
+        // Assert
+        assertThat(exception).isNotNull();
+        assertThat(exception.getMessage()).isEqualTo("Cart not found with User Id: 5");
     }
 }

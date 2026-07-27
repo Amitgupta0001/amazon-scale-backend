@@ -1,5 +1,6 @@
 package com.amazonscale.order.dto;
 
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 import java.math.BigDecimal;
@@ -9,21 +10,39 @@ import static org.assertj.core.api.Assertions.assertThat;
 class OrderItemResponseTest {
 
     @Test
-    void testOrderItemResponseBuilderAndGettersSetters() {
+    @DisplayName("Should build OrderItemResponse using Builder and verify getters/setters")
+    void shouldBuildOrderItemResponseAndVerifyGettersSetters() {
+        // Act
         OrderItemResponse response = OrderItemResponse.builder()
                 .productId(10L)
-                .productName("Widget")
-                .sku("10")
-                .quantity(2)
-                .unitPrice(new BigDecimal("25.00"))
-                .lineTotal(new BigDecimal("50.00"))
-                .build();
+        .productName("Laptop")
+        .sku("LAP123")
+        .quantity(1)
+        .unitPrice(new BigDecimal("999.99"))
+        .lineTotal(new BigDecimal("999.99"))
+        .build();
 
+        // Assert
         assertThat(response.getProductId()).isEqualTo(10L);
-        assertThat(response.getProductName()).isEqualTo("Widget");
-        assertThat(response.getSku()).isEqualTo("10");
-        assertThat(response.getQuantity()).isEqualTo(2);
-        assertThat(response.getUnitPrice()).isEqualTo(new BigDecimal("25.00"));
-        assertThat(response.getLineTotal()).isEqualTo(new BigDecimal("50.00"));
+        assertThat(response.getProductName()).isEqualTo("Laptop");
+        assertThat(response.getSku()).isEqualTo("LAP123");
+        assertThat(response.getQuantity()).isEqualTo(1);
+        assertThat(response.getUnitPrice()).isEqualTo(new BigDecimal("999.99"));
+        assertThat(response.getLineTotal()).isEqualTo(new BigDecimal("999.99"));
+    }
+
+    @Test
+    @DisplayName("Should test no-args and all-args constructors")
+    void shouldTestConstructors() {
+        // Arrange & Act
+        OrderItemResponse empty = new OrderItemResponse();
+        OrderItemResponse full = new OrderItemResponse(
+                1L, "Phone", "SKU1", 2, BigDecimal.TEN, new BigDecimal("20.00")
+        );
+
+        // Assert
+        assertThat(empty.getProductId()).isNull();
+        assertThat(full.getProductId()).isEqualTo(1L);
+        assertThat(full.getProductName()).isEqualTo("Phone");
     }
 }

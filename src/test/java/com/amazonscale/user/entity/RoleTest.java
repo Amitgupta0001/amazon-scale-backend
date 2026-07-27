@@ -1,18 +1,20 @@
 package com.amazonscale.user.entity;
 
 import com.amazonscale.user.enums.Role;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.assertj.core.api.Assertions.assertThat;
 
 class RoleTest {
 
     @Test
-    void testRoleEnumValues() {
+    @DisplayName("Should contain correct Role enum constants and allow valueOf mapping")
+    void shouldVerifyRoleEnumValues() {
         // Act & Assert
-        assertEquals(3, Role.values().length);
-        assertEquals(Role.ADMIN, Role.valueOf("ADMIN"));
-        assertEquals(Role.SELLER, Role.valueOf("SELLER"));
-        assertEquals(Role.CUSTOMER, Role.valueOf("CUSTOMER"));
+        assertThat(Role.values()).containsExactlyInAnyOrder(Role.ADMIN, Role.SELLER, Role.CUSTOMER);
+        assertThat(Role.valueOf("ADMIN")).isEqualTo(Role.ADMIN);
+        assertThat(Role.valueOf("SELLER")).isEqualTo(Role.SELLER);
+        assertThat(Role.valueOf("CUSTOMER")).isEqualTo(Role.CUSTOMER);
     }
 }

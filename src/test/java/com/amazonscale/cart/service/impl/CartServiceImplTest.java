@@ -16,9 +16,11 @@ import com.amazonscale.product.exception.ProductNotFoundException;
 import com.amazonscale.product.exception.ProductUnavailableException;
 import com.amazonscale.product.repository.ProductRepository;
 import com.amazonscale.user.entity.User;
+import com.amazonscale.user.enums.Role;
 import com.amazonscale.user.exception.UserNotFoundException;
 import com.amazonscale.user.repository.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -49,197 +51,252 @@ class CartServiceImplTest {
     @Mock
     private ProductRepository productRepository;
 
-    @Mock
-    private CartMapper cartMapper;
 
     @InjectMocks
     private CartServiceImpl cartService;
 
-    private User sampleUser;
-    private Product activeProduct;
-    private Product inactiveProduct;
-    private Cart sampleCart;
-    private CartItem sampleCartItem;
+    private User user;
+    private Product product;
+    private Cart cart;
+    private CartItem cartItem;
+    private AddToCartRequest addToCartRequest;
+    private UpdateCartItemRequest updateCartItemRequest;
+    private CartResponse expectedCartResponse;
 
     @BeforeEach
     void setUp() {
-        sampleUser = User.builder()
+        user = User.builder()
                 .id(1L)
-                .email("user@example.com")
+                .firstName("Test")
+                .lastName("User")
+                .email("testuser@example.com")
+                .password("password123")
+                .role(Role.CUSTOMER)
+                .enabled(true)
                 .build();
 
-        activeProduct = Product.builder()
+        product = Product.builder()
                 .id(10L)
-                .name("Laptop")
-                .description("Powerful Laptop")
-                .price(new BigDecimal("999.99"))
-                .stock(10)
+                .name("Smartphone")
+                .price(new BigDecimal("699.99"))
+                .stock(50)
                 .active(true)
-                .imageUrl("https://example.com/laptop.jpg")
                 .build();
 
-        inactiveProduct = Product.builder()
-                .id(20L)
-                .name("Old Phone")
-                .stock(5)
-                .active(false)
-                .build();
-
-        sampleCart = Cart.builder()
+        cart = Cart.builder()
                 .id(100L)
-                .user(sampleUser)
+                .user(user)
                 .cartItems(new ArrayList<>())
                 .build();
 
-        sampleCartItem = CartItem.builder()
+        cartItem = CartItem.builder()
                 .id(1000L)
-                .cart(sampleCart)
-                .product(activeProduct)
+                .cart(cart)
+                .product(product)
                 .quantity(2)
-                .priceAtAddition(activeProduct.getPrice())
+                .priceAtAddition(new BigDecimal("699.99"))
                 .build();
-    }
 
-    @Test
-    void addItemToCart_NewItem_Success() {
-        // Arrange
-        AddToCartRequest request = AddToCartRequest.builder()
+        addToCartRequest = AddToCartRequest.builder()
                 .productId(10L)
                 .quantity(2)
                 .build();
 
-        when(userRepository.findById(1L)).thenReturn(Optional.of(sampleUser));
-        when(productRepository.findById(10L)).thenReturn(Optional.of(activeProduct));
-        when(cartRepository.findByUser_Id(1L)).thenReturn(Optional.of(sampleCart));
-        when(cartItemRepository.findByCart_IdAndProduct_Id(100L, 10L)).thenReturn(Optional.empty());
-
-        // Act
-        CartResponse response = cartService.addItemToCart(1L, request);
-
-        // Assert
-        verify(cartItemRepository, times(1)).save(any(CartItem.class));
-    }
-
-    @Test
-    void addItemToCart_ExistingItem_Success() {
-        // Arrange
-        AddToCartRequest request = AddToCartRequest.builder()
-                .productId(10L)
-                .quantity(3)
+        updateCartItemRequest = UpdateCartItemRequest.builder()
+                .quantity(5)
                 .build();
 
-        when(userRepository.findById(1L)).thenReturn(Optional.of(sampleUser));
-        when(productRepository.findById(10L)).thenReturn(Optional.of(activeProduct));
-        when(cartRepository.findByUser_Id(1L)).thenReturn(Optional.of(sampleCart));
-        when(cartItemRepository.findByCart_IdAndProduct_Id(100L, 10L)).thenReturn(Optional.of(sampleCartItem));
-
-        // Act
-        CartResponse response = cartService.addItemToCart(1L, request);
-
-        // Assert
-        assertThat(sampleCartItem.getQuantity()).isEqualTo(5); // 2 + 3
-        verify(cartItemRepository, times(1)).save(sampleCartItem);
+        expectedCartResponse = CartResponse.builder()
+                .cartId(100L)
+                .userId(1L)
+                .totalItems(2)
+                .totalAmount(new BigDecimal("1399.98"))
+                .build();
     }
 
     @Test
-    void addItemToCart_UserNotFound_ThrowsException() {
-        AddToCartRequest request = AddToCartRequest.builder().productId(10L).quantity(1).build();
-        when(userRepository.findById(1L)).thenReturn(Optional.empty());
-
-        assertThatThrownBy(() -> cartService.addItemToCart(1L, request))
-                .isInstanceOf(UserNotFoundException.class);
-    }
-
-    @Test
-    void addItemToCart_ProductNotFound_ThrowsException() {
-        AddToCartRequest request = AddToCartRequest.builder().productId(99L).quantity(1).build();
-        when(userRepository.findById(1L)).thenReturn(Optional.of(sampleUser));
-        when(productRepository.findById(99L)).thenReturn(Optional.empty());
-
-        assertThatThrownBy(() -> cartService.addItemToCart(1L, request))
-                .isInstanceOf(ProductNotFoundException.class);
-    }
-
-    @Test
-    void addItemToCart_ProductInactive_ThrowsException() {
-        AddToCartRequest request = AddToCartRequest.builder().productId(20L).quantity(1).build();
-        when(userRepository.findById(1L)).thenReturn(Optional.of(sampleUser));
-        when(productRepository.findById(20L)).thenReturn(Optional.of(inactiveProduct));
-
-        assertThatThrownBy(() -> cartService.addItemToCart(1L, request))
-                .isInstanceOf(ProductUnavailableException.class);
-    }
-
-    @Test
-    void addItemToCart_InsufficientStock_ThrowsException() {
-        AddToCartRequest request = AddToCartRequest.builder().productId(10L).quantity(100).build();
-        when(userRepository.findById(1L)).thenReturn(Optional.of(sampleUser));
-        when(productRepository.findById(10L)).thenReturn(Optional.of(activeProduct));
-        when(cartRepository.findByUser_Id(1L)).thenReturn(Optional.of(sampleCart));
-
-        assertThatThrownBy(() -> cartService.addItemToCart(1L, request))
-                .isInstanceOf(InsufficientStockException.class);
-    }
-
-    @Test
-    void updateCartItem_Success() {
+    @DisplayName("Should add new item to cart successfully")
+    void shouldAddNewItemToCartSuccessfully() {
         // Arrange
-        UpdateCartItemRequest request = UpdateCartItemRequest.builder().quantity(5).build();
-        when(cartRepository.findByUser_Id(1L)).thenReturn(Optional.of(sampleCart));
-        when(cartItemRepository.findByCart_IdAndProduct_Id(100L, 10L)).thenReturn(Optional.of(sampleCartItem));
+        when(userRepository.findById(1L)).thenReturn(Optional.of(user));
+        when(productRepository.findById(10L)).thenReturn(Optional.of(product));
+        when(cartRepository.findByUser_Id(1L)).thenReturn(Optional.of(cart));
+        when(cartItemRepository.findByCart_IdAndProduct_Id(100L, 10L)).thenReturn(Optional.empty());
+        when(cartItemRepository.save(any(CartItem.class))).thenReturn(cartItem);
 
         // Act
-        CartResponse response = cartService.updateCartItem(1L, 10L, request);
+        CartResponse response = cartService.addItemToCart(1L, addToCartRequest);
 
         // Assert
-        assertThat(sampleCartItem.getQuantity()).isEqualTo(5);
-        verify(cartItemRepository, times(1)).save(sampleCartItem);
+        assertThat(response).isNotNull();
+        assertThat(response.getCartId()).isEqualTo(cart.getId());
+        assertThat(response.getUserId()).isEqualTo(user.getId());
+
+        verify(cartItemRepository).save(any(CartItem.class));
     }
 
     @Test
-    void updateCartItem_CartNotFound_ThrowsException() {
-        UpdateCartItemRequest request = UpdateCartItemRequest.builder().quantity(5).build();
-        when(cartRepository.findByUser_Id(1L)).thenReturn(Optional.empty());
+    @DisplayName("Should increment quantity when item already exists in cart")
+    void shouldIncrementQuantityWhenItemExistsInCart() {
+        // Arrange
+        when(userRepository.findById(1L)).thenReturn(Optional.of(user));
+        when(productRepository.findById(10L)).thenReturn(Optional.of(product));
+        when(cartRepository.findByUser_Id(1L)).thenReturn(Optional.of(cart));
+        when(cartItemRepository.findByCart_IdAndProduct_Id(100L, 10L)).thenReturn(Optional.of(cartItem));
+        when(cartItemRepository.save(any(CartItem.class))).thenReturn(cartItem);
 
-        assertThatThrownBy(() -> cartService.updateCartItem(1L, 10L, request))
-                .isInstanceOf(CartNotFoundException.class);
+        // Act
+        CartResponse response = cartService.addItemToCart(1L, addToCartRequest);
+
+        // Assert
+        assertThat(response).isNotNull();
+        assertThat(cartItem.getQuantity()).isEqualTo(4); // 2 + 2
+
+        verify(cartItemRepository).save(cartItem);
     }
 
     @Test
-    void updateCartItem_ItemNotFound_ThrowsException() {
-        UpdateCartItemRequest request = UpdateCartItemRequest.builder().quantity(5).build();
-        when(cartRepository.findByUser_Id(1L)).thenReturn(Optional.of(sampleCart));
+    @DisplayName("Should throw UserNotFoundException when adding item for non-existent user")
+    void shouldThrowUserNotFoundExceptionWhenUserMissing() {
+        // Arrange
+        when(userRepository.findById(99L)).thenReturn(Optional.empty());
+
+        // Act & Assert
+        assertThatThrownBy(() -> cartService.addItemToCart(99L, addToCartRequest))
+                .isInstanceOf(UserNotFoundException.class)
+                .hasMessageContaining("99");
+
+        verify(cartItemRepository, never()).save(any(CartItem.class));
+    }
+
+    @Test
+    @DisplayName("Should throw ProductNotFoundException when adding non-existent product")
+    void shouldThrowProductNotFoundExceptionWhenProductMissing() {
+        // Arrange
+        when(userRepository.findById(1L)).thenReturn(Optional.of(user));
+        when(productRepository.findById(10L)).thenReturn(Optional.empty());
+
+        // Act & Assert
+        assertThatThrownBy(() -> cartService.addItemToCart(1L, addToCartRequest))
+                .isInstanceOf(ProductNotFoundException.class)
+                .hasMessageContaining("10");
+    }
+
+    @Test
+    @DisplayName("Should throw ProductUnavailableException when adding inactive product to cart")
+    void shouldThrowProductUnavailableExceptionWhenProductInactive() {
+        // Arrange
+        product.setActive(false);
+        when(userRepository.findById(1L)).thenReturn(Optional.of(user));
+        when(productRepository.findById(10L)).thenReturn(Optional.of(product));
+
+        // Act & Assert
+        assertThatThrownBy(() -> cartService.addItemToCart(1L, addToCartRequest))
+                .isInstanceOf(ProductUnavailableException.class)
+                .hasMessageContaining("10");
+    }
+
+    @Test
+    @DisplayName("Should throw InsufficientStockException when adding quantity exceeds available stock")
+    void shouldThrowInsufficientStockExceptionWhenExceedsStock() {
+        // Arrange
+        product.setStock(1);
+        when(userRepository.findById(1L)).thenReturn(Optional.of(user));
+        when(productRepository.findById(10L)).thenReturn(Optional.of(product));
+        when(cartRepository.findByUser_Id(1L)).thenReturn(Optional.of(cart));
         when(cartItemRepository.findByCart_IdAndProduct_Id(100L, 10L)).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> cartService.updateCartItem(1L, 10L, request))
-                .isInstanceOf(CartItemNotFoundException.class);
+        // Act & Assert
+        assertThatThrownBy(() -> cartService.addItemToCart(1L, addToCartRequest))
+                .isInstanceOf(InsufficientStockException.class)
+                .hasMessageContaining("Insufficient stock for product 10");
     }
 
     @Test
-    void removeCartItem_Success() {
-        when(cartRepository.findByUser_Id(1L)).thenReturn(Optional.of(sampleCart));
-        when(cartItemRepository.findByCart_IdAndProduct_Id(100L, 10L)).thenReturn(Optional.of(sampleCartItem));
+    @DisplayName("Should update cart item quantity successfully")
+    void shouldUpdateCartItemQuantitySuccessfully() {
+        // Arrange
+        when(cartRepository.findByUser_Id(1L)).thenReturn(Optional.of(cart));
+        when(cartItemRepository.findByCart_IdAndProduct_Id(100L, 10L)).thenReturn(Optional.of(cartItem));
+        when(cartItemRepository.save(any(CartItem.class))).thenReturn(cartItem);
 
+
+        // Act
+        CartResponse response = cartService.updateCartItem(1L, 10L, updateCartItemRequest);
+
+        // Assert
+        assertThat(response).isNotNull();
+        assertThat(cartItem.getQuantity()).isEqualTo(5);
+
+        verify(cartItemRepository).save(cartItem);
+    }
+
+    @Test
+    @DisplayName("Should throw CartItemNotFoundException when updating item not present in cart")
+    void shouldThrowCartItemNotFoundExceptionWhenUpdatingMissingItem() {
+        // Arrange
+        when(cartRepository.findByUser_Id(1L)).thenReturn(Optional.of(cart));
+        when(cartItemRepository.findByCart_IdAndProduct_Id(100L, 10L)).thenReturn(Optional.empty());
+
+        // Act & Assert
+        assertThatThrownBy(() -> cartService.updateCartItem(1L, 10L, updateCartItemRequest))
+                .isInstanceOf(CartItemNotFoundException.class)
+                .hasMessageContaining("10");
+    }
+
+    @Test
+    @DisplayName("Should remove cart item successfully")
+    void shouldRemoveCartItemSuccessfully() {
+        // Arrange
+        when(cartRepository.findByUser_Id(1L)).thenReturn(Optional.of(cart));
+        when(cartItemRepository.findByCart_IdAndProduct_Id(100L, 10L)).thenReturn(Optional.of(cartItem));
+
+        // Act
         cartService.removeCartItem(1L, 10L);
 
-        verify(cartItemRepository, times(1)).deleteByCart_IdAndProduct_Id(100L, 10L);
+        // Assert
+        verify(cartItemRepository).deleteByCart_IdAndProduct_Id(100L, 10L);
     }
 
     @Test
-    void clearCart_Success() {
-        when(cartRepository.findByUser_Id(1L)).thenReturn(Optional.of(sampleCart));
+    @DisplayName("Should clear cart successfully")
+    void shouldClearCartSuccessfully() {
+        // Arrange
+        when(cartRepository.findByUser_Id(1L)).thenReturn(Optional.of(cart));
 
+        // Act
         cartService.clearCart(1L);
 
-        verify(cartItemRepository, times(1)).deleteByCart_Id(100L);
+        // Assert
+        verify(cartItemRepository).deleteByCart_Id(100L);
     }
 
     @Test
-    void getCart_Success() {
-        when(cartRepository.findByUser_Id(1L)).thenReturn(Optional.of(sampleCart));
+    @DisplayName("Should get user cart successfully")
+    void shouldGetCartSuccessfully() {
+        // Arrange
+        when(cartRepository.findByUser_Id(1L)).thenReturn(Optional.of(cart));
 
-        cartService.getCart(1L);
+        // Act
+        CartResponse response = cartService.getCart(1L);
 
-        verify(cartRepository, times(1)).findByUser_Id(1L);
+        // Assert
+        assertThat(response).isNotNull();
+        assertThat(response.getCartId()).isEqualTo(cart.getId());
+        assertThat(response.getUserId()).isEqualTo(user.getId());
+
+        verify(cartRepository).findByUser_Id(1L);
+    }
+
+    @Test
+    @DisplayName("Should throw CartNotFoundException when cart does not exist for user")
+    void shouldThrowCartNotFoundExceptionWhenCartMissing() {
+        // Arrange
+        when(cartRepository.findByUser_Id(99L)).thenReturn(Optional.empty());
+
+        // Act & Assert
+        assertThatThrownBy(() -> cartService.getCart(99L))
+                .isInstanceOf(CartNotFoundException.class)
+                .hasMessageContaining("99");
     }
 }

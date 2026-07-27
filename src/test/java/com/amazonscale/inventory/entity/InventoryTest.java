@@ -1,18 +1,20 @@
 package com.amazonscale.inventory.entity;
 
 import com.amazonscale.product.entity.Product;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 import java.time.LocalDateTime;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.assertj.core.api.Assertions.assertThat;
 
 class InventoryTest {
 
     @Test
-    void testInventoryGettersSettersAndBuilder() {
+    @DisplayName("Should build Inventory entity and verify getters and setters")
+    void shouldBuildInventoryAndVerifyGettersSetters() {
         // Arrange
-        Product product = Product.builder().id(10L).name("Phone").build();
+        Product product = Product.builder().id(10L).name("Laptop").build();
         LocalDateTime now = LocalDateTime.now();
 
         // Act
@@ -21,47 +23,64 @@ class InventoryTest {
                 .product(product)
                 .quantity(100)
                 .reservedQuantity(20)
-                .warehouseLocation("Location A")
-                .lowStockThreshold(10)
+                .warehouseLocation("Location X")
+                .lowStockThreshold(15)
                 .createdAt(now)
                 .updatedAt(now)
                 .build();
 
         // Assert
-        assertEquals(1L, inventory.getId());
-        assertEquals(product, inventory.getProduct());
-        assertEquals(100, inventory.getQuantity());
-        assertEquals(20, inventory.getReservedQuantity());
-        assertEquals(80, inventory.getAvailableQuantity());
-        assertEquals("Location A", inventory.getWarehouseLocation());
-        assertEquals(10, inventory.getLowStockThreshold());
-        assertEquals(now, inventory.getCreatedAt());
-        assertEquals(now, inventory.getUpdatedAt());
+        assertThat(inventory.getId()).isEqualTo(1L);
+        assertThat(inventory.getProduct()).isEqualTo(product);
+        assertThat(inventory.getQuantity()).isEqualTo(100);
+        assertThat(inventory.getReservedQuantity()).isEqualTo(20);
+        assertThat(inventory.getWarehouseLocation()).isEqualTo("Location X");
+        assertThat(inventory.getLowStockThreshold()).isEqualTo(15);
+        assertThat(inventory.getCreatedAt()).isEqualTo(now);
+        assertThat(inventory.getUpdatedAt()).isEqualTo(now);
     }
 
     @Test
-    void testPrePersistAndPreUpdate() {
+    @DisplayName("Should correctly calculate available quantity dynamically via getAvailableQuantity()")
+    void shouldCalculateAvailableQuantityCorrectly() {
+        // Arrange
+        Inventory inventory = Inventory.builder()
+                .quantity(50)
+                .reservedQuantity(15)
+                .build();
+
+        // Act & Assert
+        assertThat(inventory.getAvailableQuantity()).isEqualTo(35);
+
+        // Edge case - reserved > quantity returns 0, not negative
+        inventory.setReservedQuantity(60);
+        assertThat(inventory.getAvailableQuantity()).isEqualTo(0);
+
+        // Edge case - null fields handled safely as 0
+        Inventory empty = new Inventory();
+        assertThat(empty.getAvailableQuantity()).isEqualTo(0);
+    }
+
+    @Test
+    @DisplayName("Should populate timestamps automatically on @PrePersist (prePersist) and @PreUpdate (preUpdate)")
+    void shouldPopulateTimestampsOnPrePersistAndPreUpdate() {
         // Arrange
         Inventory inventory = new Inventory();
 
-        // Act
+        // Act - Simulating PrePersist
         inventory.prePersist();
 
         // Assert
-        assertNotNull(inventory.getCreatedAt());
-        assertNotNull(inventory.getUpdatedAt());
+        assertThat(inventory.getCreatedAt()).isNotNull();
+        assertThat(inventory.getUpdatedAt()).isNotNull();
 
-        LocalDateTime prevUpdate = inventory.getUpdatedAt();
+        LocalDateTime initialUpdatedAt = inventory.getUpdatedAt();
+
+        // Act - Simulating PreUpdate
         inventory.preUpdate();
-        assertNotNull(inventory.getUpdatedAt());
-    }
 
-    @Test
-    void testGetAvailableQuantityWhenNull() {
-        // Arrange
-        Inventory inventory = new Inventory();
-
-        // Act & Assert
-        assertEquals(0, inventory.getAvailableQuantity());
+        // Assert
+        assertThat(inventory.getUpdatedAt()).isNotNull();
+        assertThat(inventory.getUpdatedAt()).isAfterOrEqualTo(initialUpdatedAt);
     }
 }

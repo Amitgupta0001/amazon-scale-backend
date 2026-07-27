@@ -1,35 +1,92 @@
 package com.amazonscale.cart.dto;
 
+import jakarta.validation.ConstraintViolation;
+import jakarta.validation.Validation;
+import jakarta.validation.Validator;
+import jakarta.validation.ValidatorFactory;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+
+import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
 class AddToCartRequestTest {
 
+    private static Validator validator;
+
+    @BeforeAll
+    static void setUpValidator() {
+        ValidatorFactory factory = Validation.buildDefaultValidatorFactory();
+        validator = factory.getValidator();
+    }
+
     @Test
-    void testAddToCartRequestGettersSettersBuilder() {
+    @DisplayName("Should build AddToCartRequest using Builder and verify getters and setters")
+    void shouldBuildAddToCartRequestAndVerifyGettersSetters() {
+        // Act
         AddToCartRequest request = AddToCartRequest.builder()
-                .productId(10L)
-                .quantity(3)
+                .productId(101L)
+                .quantity(2)
                 .build();
 
-        assertThat(request.getProductId()).isEqualTo(10L);
-        assertThat(request.getQuantity()).isEqualTo(3);
+        // Assert
+        assertThat(request.getProductId()).isEqualTo(101L);
+        assertThat(request.getQuantity()).isEqualTo(2);
 
-        request.setProductId(20L);
+        // Act - Setters
+        request.setProductId(202L);
         request.setQuantity(5);
 
-        assertThat(request.getProductId()).isEqualTo(20L);
+        // Assert
+        assertThat(request.getProductId()).isEqualTo(202L);
         assertThat(request.getQuantity()).isEqualTo(5);
     }
 
     @Test
-    void testNoArgsConstructorAndAllArgsConstructor() {
-        AddToCartRequest emptyRequest = new AddToCartRequest();
-        assertThat(emptyRequest.getProductId()).isNull();
+    @DisplayName("Should pass validation when fields are valid")
+    void shouldPassValidationWithValidFields() {
+        // Arrange
+        AddToCartRequest request = AddToCartRequest.builder()
+                .productId(1L)
+                .quantity(1)
+                .build();
 
-        AddToCartRequest fullRequest = new AddToCartRequest(1L, 2);
-        assertThat(fullRequest.getProductId()).isEqualTo(1L);
-        assertThat(fullRequest.getQuantity()).isEqualTo(2);
+        // Act
+        Set<ConstraintViolation<AddToCartRequest>> violations = validator.validate(request);
+
+        // Assert
+        assertThat(violations).isEmpty();
+    }
+
+    @Test
+    @DisplayName("Should fail validation when productId or quantity is null")
+    void shouldFailValidationWhenNullFields() {
+        // Arrange
+        AddToCartRequest request = new AddToCartRequest();
+
+        // Act
+        Set<ConstraintViolation<AddToCartRequest>> violations = validator.validate(request);
+
+        // Assert
+        assertThat(violations).hasSize(2);
+    }
+
+    @Test
+    @DisplayName("Should fail validation when quantity is zero or negative")
+    void shouldFailValidationWhenQuantityZeroOrNegative() {
+        // Arrange
+        AddToCartRequest request = AddToCartRequest.builder()
+                .productId(1L)
+                .quantity(0)
+                .build();
+
+        // Act
+        Set<ConstraintViolation<AddToCartRequest>> violations = validator.validate(request);
+
+        // Assert
+        assertThat(violations).hasSize(1);
+        assertThat(violations.iterator().next().getPropertyPath().toString()).isEqualTo("quantity");
     }
 }

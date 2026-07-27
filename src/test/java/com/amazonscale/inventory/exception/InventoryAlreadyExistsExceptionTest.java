@@ -1,19 +1,20 @@
 package com.amazonscale.inventory.exception;
 
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.assertj.core.api.Assertions.assertThat;
 
 class InventoryAlreadyExistsExceptionTest {
 
     @Test
-    void shouldCreateExceptionWithCorrectMessage() {
-        // Act
-        InventoryAlreadyExistsException exception = new InventoryAlreadyExistsException(10L);
+    @DisplayName("Should create InventoryAlreadyExistsException with formatted message containing product ID")
+    void shouldCreateInventoryAlreadyExistsExceptionWithCorrectMessage() {
+        // Arrange & Act
+        InventoryAlreadyExistsException exception = new InventoryAlreadyExistsException(100L);
 
         // Assert
-        assertNotNull(exception);
-        assertEquals("Inventory already exists for product ID: 10", exception.getMessage());
-        assertTrue(exception instanceof RuntimeException);
+        assertThat(exception).isNotNull();
+        assertThat(exception.getMessage()).isEqualTo("Inventory already exists for product ID: 100");
     }
 }

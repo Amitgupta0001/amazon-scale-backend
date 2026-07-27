@@ -5,49 +5,50 @@ import com.amazonscale.inventory.dto.InventoryResponse;
 import com.amazonscale.inventory.dto.InventoryUpdateRequest;
 import com.amazonscale.inventory.entity.Inventory;
 import com.amazonscale.product.entity.Product;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
+import java.lang.reflect.Constructor;
 import java.time.LocalDateTime;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.assertj.core.api.Assertions.assertThat;
 
 class InventoryMapperTest {
 
     @Test
-    void toInventory() {
+    @DisplayName("Should map InventoryRequest DTO to Inventory entity")
+    void shouldMapInventoryRequestToInventoryEntity() {
         // Arrange
         InventoryRequest request = new InventoryRequest();
-        request.setProductId(5L);
-        request.setQuantity(20);
-        request.setWarehouseLocation("Rack 4");
+        request.setProductId(10L);
+        request.setQuantity(50);
+        request.setWarehouseLocation("Section B");
         request.setLowStockThreshold(5);
 
         // Act
         Inventory inventory = InventoryMapper.toInventory(request);
 
         // Assert
-        assertNotNull(inventory);
-        assertEquals(20, inventory.getQuantity());
-        assertEquals("Rack 4", inventory.getWarehouseLocation());
-        assertEquals(5, inventory.getLowStockThreshold());
+        assertThat(inventory).isNotNull();
+        assertThat(inventory.getQuantity()).isEqualTo(50);
+        assertThat(inventory.getWarehouseLocation()).isEqualTo("Section B");
+        assertThat(inventory.getLowStockThreshold()).isEqualTo(5);
     }
 
     @Test
-    void toResponse() {
+    @DisplayName("Should map Inventory entity to InventoryResponse DTO")
+    void shouldMapInventoryEntityToInventoryResponse() {
         // Arrange
-        Product product = Product.builder()
-                .id(5L)
-                .name("Keyboard")
-                .build();
-
+        Product product = Product.builder().id(10L).name("Smartwatch").build();
         LocalDateTime now = LocalDateTime.now();
+
         Inventory inventory = Inventory.builder()
                 .id(1L)
                 .product(product)
-                .quantity(50)
+                .quantity(100)
                 .reservedQuantity(10)
-                .warehouseLocation("Rack 4")
-                .lowStockThreshold(5)
+                .warehouseLocation("Section B")
+                .lowStockThreshold(15)
                 .createdAt(now)
                 .updatedAt(now)
                 .build();
@@ -56,37 +57,55 @@ class InventoryMapperTest {
         InventoryResponse response = InventoryMapper.toResponse(inventory);
 
         // Assert
-        assertNotNull(response);
-        assertEquals(1L, response.getId());
-        assertEquals(5L, response.getProductId());
-        assertEquals("Keyboard", response.getProductName());
-        assertEquals(50, response.getQuantity());
-        assertEquals(10, response.getReservedQuantity());
-        assertEquals(40, response.getAvailableQuantity());
-        assertEquals("Rack 4", response.getWarehouseLocation());
+        assertThat(response).isNotNull();
+        assertThat(response.getId()).isEqualTo(1L);
+        assertThat(response.getProductId()).isEqualTo(10L);
+        assertThat(response.getProductName()).isEqualTo("Smartwatch");
+        assertThat(response.getQuantity()).isEqualTo(100);
+        assertThat(response.getReservedQuantity()).isEqualTo(10);
+        assertThat(response.getAvailableQuantity()).isEqualTo(90);
+        assertThat(response.getWarehouseLocation()).isEqualTo("Section B");
+        assertThat(response.getLowStockThreshold()).isEqualTo(15);
+        assertThat(response.getCreatedAt()).isEqualTo(now);
+        assertThat(response.getUpdatedAt()).isEqualTo(now);
     }
 
     @Test
-    void updateInventory() {
+    @DisplayName("Should update existing Inventory entity from InventoryUpdateRequest DTO")
+    void shouldUpdateInventoryFromUpdateRequest() {
         // Arrange
         Inventory inventory = Inventory.builder()
-                .quantity(10)
-                .warehouseLocation("Old")
-                .lowStockThreshold(2)
+                .quantity(50)
+                .warehouseLocation("Old Location")
+                .lowStockThreshold(10)
                 .build();
 
         InventoryUpdateRequest updateRequest = InventoryUpdateRequest.builder()
-                .quantity(100)
-                .warehouseLocation("New")
-                .lowStockThreshold(15)
+                .quantity(80)
+                .warehouseLocation("New Location")
+                .lowStockThreshold(20)
                 .build();
 
         // Act
         InventoryMapper.updateInventory(inventory, updateRequest);
 
         // Assert
-        assertEquals(100, inventory.getQuantity());
-        assertEquals("New", inventory.getWarehouseLocation());
-        assertEquals(15, inventory.getLowStockThreshold());
+        assertThat(inventory.getQuantity()).isEqualTo(80);
+        assertThat(inventory.getWarehouseLocation()).isEqualTo("New Location");
+        assertThat(inventory.getLowStockThreshold()).isEqualTo(20);
+    }
+
+    @Test
+    @DisplayName("Should instantiate private constructor via reflection for test coverage")
+    void shouldInstantiatePrivateConstructorForCoverage() throws Exception {
+        // Arrange
+        Constructor<InventoryMapper> constructor = InventoryMapper.class.getDeclaredConstructor();
+        constructor.setAccessible(true);
+
+        // Act
+        InventoryMapper instance = constructor.newInstance();
+
+        // Assert
+        assertThat(instance).isNotNull();
     }
 }

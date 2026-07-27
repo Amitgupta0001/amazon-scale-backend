@@ -1,18 +1,20 @@
 package com.amazonscale.category.exception;
 
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.assertj.core.api.Assertions.assertThat;
 
 class CategoryNotFoundExceptionTest {
 
     @Test
-    void shouldCreateExceptionWithId() {
-        // Act
-        CategoryNotFoundException exception = new CategoryNotFoundException(15L);
+    @DisplayName("Should create CategoryNotFoundException with formatted message containing ID")
+    void shouldCreateCategoryNotFoundExceptionWithCorrectMessage() {
+        // Arrange & Act
+        CategoryNotFoundException exception = new CategoryNotFoundException(100L);
 
         // Assert
-        assertNotNull(exception);
-        assertEquals("Category not found with id: 15", exception.getMessage());
+        assertThat(exception).isNotNull();
+        assertThat(exception.getMessage()).isEqualTo("Category not found with id: 100");
     }
 }

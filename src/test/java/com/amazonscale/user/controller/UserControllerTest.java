@@ -3,9 +3,11 @@ package com.amazonscale.user.controller;
 import com.amazonscale.user.dto.UserRequest;
 import com.amazonscale.user.dto.UserResponse;
 import com.amazonscale.user.enums.Role;
+import com.amazonscale.user.exception.EmailAlreadyExistsException;
 import com.amazonscale.user.service.UserService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -40,7 +42,8 @@ class UserControllerTest {
     }
 
     @Test
-    void testRegisterUserSuccess() throws Exception {
+    @DisplayName("Should register user successfully and return HTTP 201 Created with UserResponse")
+    void shouldRegisterUserSuccessfully() throws Exception {
         // Arrange
         UserRequest request = UserRequest.builder()
                 .firstName("John")
@@ -67,8 +70,44 @@ class UserControllerTest {
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.id").value(1L))
-                .andExpect(jsonPath("$.email").value("john.doe@example.com"));
+                .andExpect(jsonPath("$.firstName").value("John"))
+                .andExpect(jsonPath("$.lastName").value("Doe"))
+                .andExpect(jsonPath("$.email").value("john.doe@example.com"))
+                .andExpect(jsonPath("$.role").value("CUSTOMER"))
+                .andExpect(jsonPath("$.enabled").value(true));
 
         verify(userService, times(1)).register(any(UserRequest.class));
+    }
+
+    @Test
+    @DisplayName("Should return HTTP 400 Bad Request when UserRequest fails bean validation")
+    void shouldReturnBadRequestWhenUserRequestIsInvalid() throws Exception {
+        // Arrange
+        UserRequest invalidRequest = UserRequest.builder()
+                .firstName("") // Blank
+                .lastName("Doe")
+                .email("invalid-email") // Invalid format
+                .password("short") // Password < 8 chars
+                .build();
+
+        // Act & Assert
+        mockMvc.perform(post("/api/v1/auth/register")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(invalidRequest)))
+                .andExpect(status().isBadRequest());
+
+        verify(userService, never()).register(any(UserRequest.class));
+    }
+
+    @Test
+    @DisplayName("Should build UserController using Builder pattern")
+    void shouldBuildUserControllerUsingBuilder() {
+        // Arrange & Act
+        UserController controller = UserController.builder()
+                .userService(userService)
+                .build();
+
+        // Assert
+        org.assertj.core.api.Assertions.assertThat(controller).isNotNull();
     }
 }

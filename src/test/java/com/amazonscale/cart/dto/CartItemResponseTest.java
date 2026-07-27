@@ -1,5 +1,6 @@
 package com.amazonscale.cart.dto;
 
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 import java.math.BigDecimal;
@@ -9,37 +10,43 @@ import static org.assertj.core.api.Assertions.assertThat;
 class CartItemResponseTest {
 
     @Test
-    void testCartItemResponseGettersSettersBuilder() {
+    @DisplayName("Should build CartItemResponse using Builder and verify getters/setters")
+    void shouldBuildCartItemResponseAndVerifyGettersSetters() {
+        // Act
         CartItemResponse response = CartItemResponse.builder()
                 .cartItemId(1L)
-                .productId(100L)
-                .productName("Laptop")
-                .productDescription("High performance laptop")
-                .unitPrice(new BigDecimal("1200.00"))
+                .productId(10L)
+                .productName("Wireless Mouse")
+                .productDescription("Optical Mouse")
+                .unitPrice(new BigDecimal("29.99"))
                 .quantity(2)
-                .subtotal(new BigDecimal("2400.00"))
-                .imageUrl("https://example.com/laptop.jpg")
+                .subtotal(new BigDecimal("59.98"))
+                .imageUrl("https://example.com/mouse.jpg")
                 .build();
 
+        // Assert
         assertThat(response.getCartItemId()).isEqualTo(1L);
-        assertThat(response.getProductId()).isEqualTo(100L);
-        assertThat(response.getProductName()).isEqualTo("Laptop");
-        assertThat(response.getProductDescription()).isEqualTo("High performance laptop");
-        assertThat(response.getUnitPrice()).isEqualTo(new BigDecimal("1200.00"));
+        assertThat(response.getProductId()).isEqualTo(10L);
+        assertThat(response.getProductName()).isEqualTo("Wireless Mouse");
+        assertThat(response.getProductDescription()).isEqualTo("Optical Mouse");
+        assertThat(response.getUnitPrice()).isEqualTo(new BigDecimal("29.99"));
         assertThat(response.getQuantity()).isEqualTo(2);
-        assertThat(response.getSubtotal()).isEqualTo(new BigDecimal("2400.00"));
-        assertThat(response.getImageUrl()).isEqualTo("https://example.com/laptop.jpg");
+        assertThat(response.getSubtotal()).isEqualTo(new BigDecimal("59.98"));
+        assertThat(response.getImageUrl()).isEqualTo("https://example.com/mouse.jpg");
     }
 
     @Test
-    void testNoArgsConstructorAndAllArgsConstructor() {
+    @DisplayName("Should test no-args and all-args constructors")
+    void shouldTestConstructors() {
+        // Arrange & Act
         CartItemResponse empty = new CartItemResponse();
-        assertThat(empty.getCartItemId()).isNull();
-
         CartItemResponse full = new CartItemResponse(
-                1L, 100L, "Laptop", "Desc", new BigDecimal("100"), 1, new BigDecimal("100"), "img.jpg"
+                1L, 10L, "Name", "Desc", BigDecimal.TEN, 1, BigDecimal.TEN, "http://url"
         );
+
+        // Assert
+        assertThat(empty.getCartItemId()).isNull();
         assertThat(full.getCartItemId()).isEqualTo(1L);
-        assertThat(full.getProductName()).isEqualTo("Laptop");
+        assertThat(full.getProductName()).isEqualTo("Name");
     }
 }

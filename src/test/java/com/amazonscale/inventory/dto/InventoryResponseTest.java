@@ -1,58 +1,63 @@
 package com.amazonscale.inventory.dto;
 
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 import java.time.LocalDateTime;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.assertj.core.api.Assertions.assertThat;
 
 class InventoryResponseTest {
 
     @Test
-    void testInventoryResponseBuilderAndGetters() {
+    @DisplayName("Should build InventoryResponse using Builder and verify all getters/setters")
+    void shouldBuildInventoryResponseAndVerifyGettersSetters() {
         // Arrange
         LocalDateTime now = LocalDateTime.now();
 
         // Act
         InventoryResponse response = InventoryResponse.builder()
                 .id(1L)
-                .productId(2L)
-                .productName("Widget")
+                .productId(10L)
+                .productName("Wireless Mouse")
                 .quantity(100)
                 .reservedQuantity(10)
                 .availableQuantity(90)
-                .warehouseLocation("Location B")
-                .lowStockThreshold(20)
+                .warehouseLocation("Sector 7G")
+                .lowStockThreshold(15)
                 .lowStock(false)
                 .createdAt(now)
                 .updatedAt(now)
                 .build();
 
         // Assert
-        assertEquals(1L, response.getId());
-        assertEquals(2L, response.getProductId());
-        assertEquals("Widget", response.getProductName());
-        assertEquals(100, response.getQuantity());
-        assertEquals(10, response.getReservedQuantity());
-        assertEquals(90, response.getAvailableQuantity());
-        assertEquals("Location B", response.getWarehouseLocation());
-        assertEquals(20, response.getLowStockThreshold());
-        assertFalse(response.getLowStock());
-        assertEquals(now, response.getCreatedAt());
-        assertEquals(now, response.getUpdatedAt());
+        assertThat(response.getId()).isEqualTo(1L);
+        assertThat(response.getProductId()).isEqualTo(10L);
+        assertThat(response.getProductName()).isEqualTo("Wireless Mouse");
+        assertThat(response.getQuantity()).isEqualTo(100);
+        assertThat(response.getReservedQuantity()).isEqualTo(10);
+        assertThat(response.getAvailableQuantity()).isEqualTo(90);
+        assertThat(response.getWarehouseLocation()).isEqualTo("Sector 7G");
+        assertThat(response.getLowStockThreshold()).isEqualTo(15);
+        assertThat(response.getLowStock()).isFalse();
+        assertThat(response.getCreatedAt()).isEqualTo(now);
+        assertThat(response.getUpdatedAt()).isEqualTo(now);
     }
 
     @Test
-    void testSetters() {
-        // Arrange
-        InventoryResponse response = new InventoryResponse();
-
-        // Act
-        response.setId(5L);
-        response.setLowStock(true);
+    @DisplayName("Should verify no-args and all-args constructors")
+    void shouldVerifyConstructors() {
+        // Arrange & Act
+        InventoryResponse empty = new InventoryResponse();
+        InventoryResponse full = new InventoryResponse(
+                2L, 20L, "Keyboard", 50, 5, 45, "Warehouse B", 10, true, null, null
+        );
 
         // Assert
-        assertEquals(5L, response.getId());
-        assertTrue(response.getLowStock());
+        assertThat(empty.getId()).isNull();
+        assertThat(full.getId()).isEqualTo(2L);
+        assertThat(full.getProductName()).isEqualTo("Keyboard");
+        assertThat(full.getAvailableQuantity()).isEqualTo(45);
+        assertThat(full.getLowStock()).isTrue();
     }
 }

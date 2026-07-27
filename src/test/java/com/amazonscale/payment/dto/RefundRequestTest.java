@@ -1,54 +1,71 @@
 package com.amazonscale.payment.dto;
 
+import jakarta.validation.ConstraintViolation;
 import jakarta.validation.Validation;
 import jakarta.validation.Validator;
 import jakarta.validation.ValidatorFactory;
-import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+
+import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
 class RefundRequestTest {
 
-    private Validator validator;
+    private static Validator validator;
 
-    @BeforeEach
-    void setUp() {
+    @BeforeAll
+    static void setUpValidator() {
         ValidatorFactory factory = Validation.buildDefaultValidatorFactory();
         validator = factory.getValidator();
     }
 
     @Test
-    void testGettersSettersAndBuilder() {
+    @DisplayName("Should build RefundRequest using Builder and verify getters/setters")
+    void shouldBuildRefundRequestAndVerifyGettersSetters() {
+        // Act
         RefundRequest request = RefundRequest.builder()
-                .reason("Damaged product")
+                .reason("Defective product received")
                 .build();
 
-        assertThat(request.getReason()).isEqualTo("Damaged product");
+        // Assert
+        assertThat(request.getReason()).isEqualTo("Defective product received");
 
-        request.setReason("Wrong item received");
-        assertThat(request.getReason()).isEqualTo("Wrong item received");
+        // Act - Setter
+        request.setReason("Changed mind");
+
+        // Assert
+        assertThat(request.getReason()).isEqualTo("Changed mind");
     }
 
     @Test
-    void testValidation_Success() {
-        RefundRequest request = new RefundRequest("Item defective");
-        var violations = validator.validate(request);
+    @DisplayName("Should pass validation with valid reason")
+    void shouldPassValidationWithValidReason() {
+        // Arrange
+        RefundRequest request = RefundRequest.builder()
+                .reason("Order cancelled by user")
+                .build();
+
+        // Act
+        Set<ConstraintViolation<RefundRequest>> violations = validator.validate(request);
+
+        // Assert
         assertThat(violations).isEmpty();
     }
 
     @Test
-    void testValidation_BlankReason() {
-        RefundRequest request = new RefundRequest("");
-        var violations = validator.validate(request);
-        assertThat(violations).isNotEmpty();
-    }
+    @DisplayName("Should fail validation when reason is blank or exceeds 255 characters")
+    void shouldFailValidationWhenReasonInvalid() {
+        // Arrange - Blank
+        RefundRequest blankReq = RefundRequest.builder().reason("   ").build();
+        // Arrange - Exceeds max length
+        String longReason = "a".repeat(256);
+        RefundRequest longReq = RefundRequest.builder().reason(longReason).build();
 
-    @Test
-    void testValidation_ExceedsMaxLength() {
-        String longReason = "A".repeat(256);
-        RefundRequest request = new RefundRequest(longReason);
-        var violations = validator.validate(request);
-        assertThat(violations).isNotEmpty();
+        // Act & Assert
+        assertThat(validator.validate(blankReq)).hasSize(1);
+        assertThat(validator.validate(longReq)).hasSize(1);
     }
 }

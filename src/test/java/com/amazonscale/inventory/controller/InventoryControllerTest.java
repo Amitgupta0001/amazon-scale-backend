@@ -6,6 +6,7 @@ import com.amazonscale.inventory.dto.InventoryUpdateRequest;
 import com.amazonscale.inventory.service.InventoryService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -45,22 +46,24 @@ class InventoryControllerTest {
         sampleResponse = InventoryResponse.builder()
                 .id(1L)
                 .productId(10L)
-                .productName("Test Product")
+                .productName("Smartwatch")
                 .quantity(100)
                 .reservedQuantity(10)
                 .availableQuantity(90)
-                .warehouseLocation("Warehouse A")
+                .warehouseLocation("Location A")
                 .lowStockThreshold(15)
+                .lowStock(false)
                 .build();
     }
 
     @Test
-    void testCreateInventorySuccess() throws Exception {
+    @DisplayName("Should create inventory successfully and return HTTP 201 Created with InventoryResponse")
+    void shouldCreateInventorySuccessfully() throws Exception {
         // Arrange
         InventoryRequest request = new InventoryRequest();
         request.setProductId(10L);
         request.setQuantity(100);
-        request.setWarehouseLocation("Warehouse A");
+        request.setWarehouseLocation("Location A");
         request.setLowStockThreshold(15);
 
         when(inventoryService.createInventory(any(InventoryRequest.class))).thenReturn(sampleResponse);
@@ -72,13 +75,29 @@ class InventoryControllerTest {
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.id").value(1L))
                 .andExpect(jsonPath("$.productId").value(10L))
-                .andExpect(jsonPath("$.warehouseLocation").value("Warehouse A"));
+                .andExpect(jsonPath("$.quantity").value(100));
 
         verify(inventoryService, times(1)).createInventory(any(InventoryRequest.class));
     }
 
     @Test
-    void testGetInventoryByIdSuccess() throws Exception {
+    @DisplayName("Should return HTTP 400 Bad Request when InventoryRequest fails Bean Validation")
+    void shouldReturnBadRequestWhenCreateInventoryValidationFails() throws Exception {
+        // Arrange
+        InventoryRequest invalidRequest = new InventoryRequest(); // missing required fields
+
+        // Act & Assert
+        mockMvc.perform(post("/api/v1/inventory")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(invalidRequest)))
+                .andExpect(status().isBadRequest());
+
+        verify(inventoryService, never()).createInventory(any(InventoryRequest.class));
+    }
+
+    @Test
+    @DisplayName("Should get inventory by ID and return HTTP 200 OK")
+    void shouldGetInventoryByIdSuccessfully() throws Exception {
         // Arrange
         when(inventoryService.getInventoryById(1L)).thenReturn(sampleResponse);
 
@@ -86,13 +105,14 @@ class InventoryControllerTest {
         mockMvc.perform(get("/api/v1/inventory/1"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.id").value(1L))
-                .andExpect(jsonPath("$.productName").value("Test Product"));
+                .andExpect(jsonPath("$.productName").value("Smartwatch"));
 
         verify(inventoryService, times(1)).getInventoryById(1L);
     }
 
     @Test
-    void testGetAllInventorySuccess() throws Exception {
+    @DisplayName("Should get all inventories list and return HTTP 200 OK")
+    void shouldGetAllInventorySuccessfully() throws Exception {
         // Arrange
         when(inventoryService.getAllInventory()).thenReturn(List.of(sampleResponse));
 
@@ -100,30 +120,33 @@ class InventoryControllerTest {
         mockMvc.perform(get("/api/v1/inventory"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.length()").value(1))
-                .andExpect(jsonPath("$[0].id").value(1L));
+                .andExpect(jsonPath("$[0].productName").value("Smartwatch"));
 
         verify(inventoryService, times(1)).getAllInventory();
     }
 
     @Test
-    void testGetInventoryByProductIdSuccess() throws Exception {
+    @DisplayName("Should get inventory by Product ID and return HTTP 200 OK")
+    void shouldGetInventoryByProductIdSuccessfully() throws Exception {
         // Arrange
         when(inventoryService.getInventoryByProductId(10L)).thenReturn(sampleResponse);
 
         // Act & Assert
         mockMvc.perform(get("/api/v1/inventory/product/10"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.productId").value(10L));
+                .andExpect(jsonPath("$.productId").value(10L))
+                .andExpect(jsonPath("$.productName").value("Smartwatch"));
 
         verify(inventoryService, times(1)).getInventoryByProductId(10L);
     }
 
     @Test
-    void testUpdateInventorySuccess() throws Exception {
+    @DisplayName("Should update inventory by ID and return HTTP 200 OK")
+    void shouldUpdateInventorySuccessfully() throws Exception {
         // Arrange
         InventoryUpdateRequest updateRequest = InventoryUpdateRequest.builder()
-                .quantity(150)
-                .warehouseLocation("Warehouse B")
+                .quantity(120)
+                .warehouseLocation("Location B")
                 .lowStockThreshold(20)
                 .build();
 
@@ -140,7 +163,8 @@ class InventoryControllerTest {
     }
 
     @Test
-    void testDeleteInventorySuccess() throws Exception {
+    @DisplayName("Should delete inventory by ID and return HTTP 204 No Content")
+    void shouldDeleteInventorySuccessfully() throws Exception {
         // Arrange
         doNothing().when(inventoryService).deleteInventoryById(1L);
 

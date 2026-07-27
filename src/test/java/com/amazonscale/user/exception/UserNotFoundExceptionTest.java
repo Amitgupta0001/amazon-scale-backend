@@ -1,5 +1,6 @@
 package com.amazonscale.user.exception;
 
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -7,8 +8,13 @@ import static org.assertj.core.api.Assertions.assertThat;
 class UserNotFoundExceptionTest {
 
     @Test
-    void testExceptionMessage() {
+    @DisplayName("Should create UserNotFoundException with formatted message containing userId")
+    void shouldCreateUserNotFoundExceptionWithCorrectMessage() {
+        // Arrange & Act
         UserNotFoundException ex = new UserNotFoundException(42L);
-        assertThat(ex.getMessage()).contains("42");
+
+        // Assert
+        assertThat(ex).isNotNull();
+        assertThat(ex.getMessage()).isEqualTo("User 42 not found");
     }
 }

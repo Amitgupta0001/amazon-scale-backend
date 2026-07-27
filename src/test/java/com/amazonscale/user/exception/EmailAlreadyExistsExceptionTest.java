@@ -1,18 +1,20 @@
 package com.amazonscale.user.exception;
 
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.assertj.core.api.Assertions.assertThat;
 
 class EmailAlreadyExistsExceptionTest {
 
     @Test
-    void shouldCreateExceptionWithEmailMessage() {
-        // Act
+    @DisplayName("Should create EmailAlreadyExistsException with formatted message containing email")
+    void shouldCreateEmailAlreadyExistsExceptionWithCorrectMessage() {
+        // Arrange & Act
         EmailAlreadyExistsException exception = new EmailAlreadyExistsException("existing@example.com");
 
         // Assert
-        assertNotNull(exception);
-        assertEquals("User with email 'existing@example.com' already exists.", exception.getMessage());
+        assertThat(exception).isNotNull();
+        assertThat(exception.getMessage()).isEqualTo("User with email 'existing@example.com' already exists.");
     }
 }

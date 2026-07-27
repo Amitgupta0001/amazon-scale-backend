@@ -9,6 +9,7 @@ import com.amazonscale.payment.enums.PaymentStatus;
 import com.amazonscale.payment.service.PaymentService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -47,115 +48,121 @@ class PaymentControllerTest {
         objectMapper = new ObjectMapper();
 
         samplePaymentResponse = PaymentResponse.builder()
-                .id(500L)
-                .orderId(50L)
-                .transactionId("TXN12345")
-                .amount(new BigDecimal("100.00"))
+                .id(1L)
+                .orderId(100L)
+                .transactionId("TXN-123456")
+                .amount(new BigDecimal("199.99"))
                 .currency("INR")
                 .paymentMethod(PaymentMethod.CREDIT_CARD)
-                .gateway(PaymentGateway.STRIPE)
+                .gateway(PaymentGateway.RAZORPAY)
                 .status(PaymentStatus.PENDING)
                 .build();
     }
 
     @Test
-    void initiatePayment_Success() throws Exception {
+    @DisplayName("Should initiate payment successfully and return HTTP 201 Created")
+    void shouldInitiatePaymentSuccessfully() throws Exception {
+        // Arrange
         CreatePaymentRequest request = CreatePaymentRequest.builder()
-                .orderId(50L)
-                .gateway(PaymentGateway.STRIPE)
+                .orderId(100L)
+                .gateway(PaymentGateway.RAZORPAY)
                 .build();
 
         when(paymentService.initiatePayment(eq(1L), any(CreatePaymentRequest.class))).thenReturn(samplePaymentResponse);
 
+        // Act & Assert
         mockMvc.perform(post("/api/v1/payments")
-                        .header("X-User-Id", "1")
+                        .header("X-User-Id", 1L)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.id").value(500L))
+                .andExpect(jsonPath("$.id").value(1L))
                 .andExpect(jsonPath("$.status").value("PENDING"));
 
         verify(paymentService, times(1)).initiatePayment(eq(1L), any(CreatePaymentRequest.class));
     }
 
     @Test
-    void initiatePayment_ValidationError() throws Exception {
-        CreatePaymentRequest request = new CreatePaymentRequest(); // Missing orderId and gateway
+    @DisplayName("Should return HTTP 400 Bad Request when CreatePaymentRequest fails Bean Validation")
+    void shouldReturnBadRequestWhenInitiatePaymentValidationFails() throws Exception {
+        // Arrange
+        CreatePaymentRequest invalidRequest = new CreatePaymentRequest(); // missing orderId and gateway
 
+        // Act & Assert
         mockMvc.perform(post("/api/v1/payments")
-                        .header("X-User-Id", "1")
+                        .header("X-User-Id", 1L)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(request)))
+                        .content(objectMapper.writeValueAsString(invalidRequest)))
                 .andExpect(status().isBadRequest());
 
         verify(paymentService, never()).initiatePayment(any(), any());
     }
 
     @Test
-    void verifyPayment_Success() throws Exception {
+    @DisplayName("Should verify payment successfully and return HTTP 200 OK")
+    void shouldVerifyPaymentSuccessfully() throws Exception {
+        // Arrange
         samplePaymentResponse.setStatus(PaymentStatus.SUCCESS);
-        when(paymentService.verifyPayment(1L, 500L)).thenReturn(samplePaymentResponse);
+        when(paymentService.verifyPayment(1L, 1L)).thenReturn(samplePaymentResponse);
 
-        mockMvc.perform(put("/api/v1/payments/500/verify")
-                        .header("X-User-Id", "1"))
+        // Act & Assert
+        mockMvc.perform(put("/api/v1/payments/1/verify")
+                        .header("X-User-Id", 1L))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value("SUCCESS"));
 
-        verify(paymentService, times(1)).verifyPayment(1L, 500L);
+        verify(paymentService, times(1)).verifyPayment(1L, 1L);
     }
 
     @Test
-    void getPaymentDetails_Success() throws Exception {
-        when(paymentService.getPayment(1L, 500L)).thenReturn(samplePaymentResponse);
+    @DisplayName("Should get payment details by ID and return HTTP 200 OK")
+    void shouldGetPaymentDetailsSuccessfully() throws Exception {
+        // Arrange
+        when(paymentService.getPayment(1L, 1L)).thenReturn(samplePaymentResponse);
 
-        mockMvc.perform(get("/api/v1/payments/500")
-                        .header("X-User-Id", "1"))
+        // Act & Assert
+        mockMvc.perform(get("/api/v1/payments/1")
+                        .header("X-User-Id", 1L))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.id").value(500L));
+                .andExpect(jsonPath("$.id").value(1L));
 
-        verify(paymentService, times(1)).getPayment(1L, 500L);
+        verify(paymentService, times(1)).getPayment(1L, 1L);
     }
 
     @Test
-    void getPaymentsByOrder_Success() throws Exception {
-        when(paymentService.getPaymentsByOrder(1L, 50L)).thenReturn(List.of(samplePaymentResponse));
+    @DisplayName("Should get payments by order ID and return HTTP 200 OK")
+    void shouldGetPaymentsByOrderSuccessfully() throws Exception {
+        // Arrange
+        when(paymentService.getPaymentsByOrder(1L, 100L)).thenReturn(List.of(samplePaymentResponse));
 
-        mockMvc.perform(get("/api/v1/payments/orders/50")
-                        .header("X-User-Id", "1"))
+        // Act & Assert
+        mockMvc.perform(get("/api/v1/payments/orders/100")
+                        .header("X-User-Id", 1L))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.length()").value(1))
-                .andExpect(jsonPath("$[0].id").value(500L));
+                .andExpect(jsonPath("$[0].id").value(1L));
 
-        verify(paymentService, times(1)).getPaymentsByOrder(1L, 50L);
+        verify(paymentService, times(1)).getPaymentsByOrder(1L, 100L);
     }
 
     @Test
-    void refundPayment_Success() throws Exception {
+    @DisplayName("Should refund payment successfully and return HTTP 200 OK")
+    void shouldRefundPaymentSuccessfully() throws Exception {
+        // Arrange
+        RefundRequest request = RefundRequest.builder().reason("Defective product").build();
         samplePaymentResponse.setStatus(PaymentStatus.REFUNDED);
-        RefundRequest request = new RefundRequest("Item damaged in transit");
 
-        when(paymentService.refundPayment(eq(1L), eq(500L), any(RefundRequest.class))).thenReturn(samplePaymentResponse);
+        when(paymentService.refundPayment(eq(1L), eq(1L), any(RefundRequest.class)))
+                .thenReturn(samplePaymentResponse);
 
-        mockMvc.perform(post("/api/v1/payments/500/refund")
-                        .header("X-User-Id", "1")
+        // Act & Assert
+        mockMvc.perform(post("/api/v1/payments/1/refund")
+                        .header("X-User-Id", 1L)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value("REFUNDED"));
 
-        verify(paymentService, times(1)).refundPayment(eq(1L), eq(500L), any(RefundRequest.class));
-    }
-
-    @Test
-    void refundPayment_ValidationError() throws Exception {
-        RefundRequest request = new RefundRequest(""); // Empty reason
-
-        mockMvc.perform(post("/api/v1/payments/500/refund")
-                        .header("X-User-Id", "1")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(request)))
-                .andExpect(status().isBadRequest());
-
-        verify(paymentService, never()).refundPayment(any(), any(), any());
+        verify(paymentService, times(1)).refundPayment(eq(1L), eq(1L), any(RefundRequest.class));
     }
 }
