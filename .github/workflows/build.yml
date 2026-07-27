@@ -29,9 +29,6 @@ jobs:
           java-version: '21'
           cache: maven
 
-      - name: Validate Maven Wrapper
-        uses: gradle/actions/wrapper-validation@v4
-
       - name: Grant execute permission to Maven Wrapper
         run: chmod +x mvnw
 
