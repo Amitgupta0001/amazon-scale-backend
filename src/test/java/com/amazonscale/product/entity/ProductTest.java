@@ -67,14 +67,20 @@ class ProductTest {
     }
 
     @Test
-    @DisplayName("Should verify constructors (no-args and all-args)")
+    @DisplayName("Should verify constructors (no-args and all-args builder)")
     void shouldVerifyConstructors() {
         // Arrange & Act
         Product emptyProduct = new Product();
-        Product fullProduct = new Product(
-                1L, "Laptop", "Gaming Laptop", "https://example.com/laptop.jpg",
-                new BigDecimal("1499.99"), 10, "GameBrand", true, null, null
-        );
+        Product fullProduct = Product.builder()
+                .id(1L)
+                .name("Laptop")
+                .description("Gaming Laptop")
+                .imageUrl("https://example.com/laptop.jpg")
+                .price(new BigDecimal("1499.99"))
+                .stock(10)
+                .brand("GameBrand")
+                .active(true)
+                .build();
 
         // Assert
         assertThat(emptyProduct.getId()).isNull();

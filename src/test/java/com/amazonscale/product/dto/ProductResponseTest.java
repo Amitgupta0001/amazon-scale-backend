@@ -56,13 +56,20 @@ class ProductResponseTest {
     }
 
     @Test
-    @DisplayName("Should initialize constructors (no-args and all-args)")
+    @DisplayName("Should initialize constructors (no-args and builder)")
     void shouldInitializeConstructors() {
         // Arrange & Act
         ProductResponse empty = new ProductResponse();
-        ProductResponse full = new ProductResponse(
-                5L, "Phone", "https://example.com/phone.jpg", "Smartphone", new BigDecimal("599.99"), 20, "MobileBrand", true
-        );
+        ProductResponse full = ProductResponse.builder()
+                .id(5L)
+                .name("Phone")
+                .imageUrl("https://example.com/phone.jpg")
+                .description("Smartphone")
+                .price(new BigDecimal("599.99"))
+                .stock(20)
+                .brand("MobileBrand")
+                .active(true)
+                .build();
 
         // Assert
         assertThat(empty.getId()).isNull();
