@@ -3,17 +3,17 @@
 ---
 
 ## 1. Overview
-The **Product Module** manages physical item catalog listings, descriptions, price attributes, active status flags, seller associations, and product DTO mappings for **AmazonScale**.
+The **Product Module** manages physical item catalog listings, descriptions, price attributes, category taxonomy associations, stock availability, ratings, discount pricing, search specifications, live autocomplete suggestions, and paginated product search results for **AmazonScale**.
 
 ---
 
 ## 2. Purpose
-Provides core catalog CRUD capabilities for managing products available for purchase across the platform.
+Provides enterprise catalog search, filtering, sorting, pagination, and administrative CRUD capabilities for managing products across the platform.
 
 ---
 
 ## 3. Architecture
-Located under `com.amazonscale.product`, leveraging clean layer separation across controllers, services, repositories, DTOs, and mappers.
+Located under `com.amazonscale.product`, leveraging clean layer separation across controllers, services, repositories, specifications, DTOs, and mappers.
 
 ---
 
@@ -24,7 +24,8 @@ com.amazonscale.product
 │   └── ProductController.java
 ├── dto
 │   ├── ProductRequest.java
-│   └── ProductResponse.java
+│   ├── ProductResponse.java
+│   └── SearchSuggestionResponse.java
 ├── entity
 │   └── Product.java
 ├── exception
@@ -34,7 +35,9 @@ com.amazonscale.product
 ├── mapper
 │   └── ProductMapper.java
 ├── repository
-│   └── ProductRepository.java
+│   ├── ProductRepository.java
+│   └── specification
+│       └── ProductSpecification.java
 └── service
     ├── ProductService.java
     └── impl
@@ -44,9 +47,10 @@ com.amazonscale.product
 ---
 
 ## 5. Components
-- **`ProductController`**: Exposes `/api/v1/products` REST endpoints.
-- **`ProductServiceImpl`**: Enforces catalog business logic and soft active/inactive status rules.
-- **`ProductRepository`**: Performs JPA queries against the `products` table.
+- **`ProductController`**: Exposes `/api/v1/products` search, suggestion, and CRUD REST endpoints.
+- **`ProductServiceImpl`**: Enforces catalog business logic, dynamic search execution, category validation, and autocomplete suggestion collation.
+- **`ProductRepository`**: Performs JPA specification execution (`JpaSpecificationExecutor<Product>`) and projection queries against the `products` table.
+- **`ProductSpecification`**: Builds type-safe dynamic JPA Criteria API predicates for search, brand, category, price bounds, stock availability, and featured flags.
 - **`ProductMapper`**: Maps between `ProductRequest`, `Product` entity, and `ProductResponse`.
 
 ---
@@ -56,55 +60,75 @@ com.amazonscale.product
 - **Primary Key**: `id` (`BIGINT`, Auto-Increment)
 - **Columns**:
   - `id` BIGINT AUTO_INCREMENT PRIMARY KEY
-  - `name` VARCHAR(255) NOT NULL
+  - `name` VARCHAR(200) NOT NULL
   - `description` TEXT NULL
+  - `image_url` VARCHAR(1000) NOT NULL
   - `price` DECIMAL(10,2) NOT NULL
+  - `original_price` DECIMAL(10,2) NULL
+  - `discount_percentage` DECIMAL(5,2) DEFAULT 0.00
   - `stock` INT NOT NULL DEFAULT 0
-  - `image_url` VARCHAR(500) NULL
+  - `brand` VARCHAR(100) NOT NULL
+  - `category_id` BIGINT NULL (FK to `categories.id`)
+  - `rating` DECIMAL(3,2) DEFAULT 4.50
+  - `review_count` INT DEFAULT 0
+  - `sku` VARCHAR(100) UNIQUE NULL
+  - `slug` VARCHAR(200) UNIQUE NULL
+  - `status` VARCHAR(50) DEFAULT 'ACTIVE'
+  - `featured` BOOLEAN NOT NULL DEFAULT FALSE
+  - `thumbnail` VARCHAR(1000) NULL
   - `active` BOOLEAN NOT NULL DEFAULT TRUE
-  - `category_id` BIGINT NOT NULL
-  - `seller_id` BIGINT NOT NULL
-  - `created_at` DATETIME NOT NULL
-  - `updated_at` DATETIME NOT NULL
-- **Indexes**: `idx_product_category`, `idx_product_seller`, `idx_product_active`
+  - `created_by` VARCHAR(100) NULL
+  - `updated_by` VARCHAR(100) NULL
+  - `created_at` TIMESTAMP NOT NULL
+  - `updated_at` TIMESTAMP NOT NULL
+- **Collection Table**: `product_gallery_images` (`product_id` BIGINT, `image_url` VARCHAR(1000))
+- **Indexes**: `idx_product_name`, `idx_product_brand`, `idx_product_price`, `idx_product_active`, `idx_product_featured`, `idx_product_category`
 
 ---
 
 ## 7. Entity Relationships
 - `Product` N:1 `Category` (`JoinColumn(name = "category_id")`)
-- `Product` N:1 `User` (`JoinColumn(name = "seller_id")`)
+- `Product` 1:N Gallery Images (`@ElementCollection`)
 - `Product` 1:1 `Inventory` (`mappedBy = "product"`)
 
 ---
 
 ## 8. DTOs
-- **`ProductRequest`**: `name`, `description`, `price`, `stock`, `imageUrl`, `categoryId`, `sellerId`.
-- **`ProductResponse`**: `id`, `name`, `description`, `price`, `stock`, `imageUrl`, `active`, `categoryId`, `sellerId`, `createdAt`, `updatedAt`.
+- **`ProductRequest`**: `name`, `description`, `imageUrl`, `price`, `originalPrice`, `discountPercentage`, `stock`, `brand`, `categoryId`, `rating`, `reviewCount`, `sku`, `slug`, `status`, `featured`, `thumbnail`, `galleryImages`.
+- **`ProductResponse`**: `id`, `name`, `description`, `imageUrl`, `price`, `originalPrice`, `discountPercentage`, `stock`, `brand`, `active`, `categoryId`, `categoryName`, `rating`, `reviewCount`, `sku`, `slug`, `status`, `featured`, `thumbnail`, `galleryImages`, `createdAt`, `updatedAt`.
+- **`SearchSuggestionResponse`**: `productNames`, `brands`, `categories`.
+- **`PageResponse<T>`**: `content`, `page`, `size`, `totalElements`, `totalPages`, `first`, `last`, `numberOfElements`.
 
 ---
 
 ## 9. Repository Layer
-- **`ProductRepository`**: Extends `JpaRepository<Product, Long>`
-  - `List<Product> findByCategoryId(Long categoryId)`
-  - `List<Product> findByActiveTrue()`
+- **`ProductRepository`**: Extends `JpaRepository<Product, Long>` and `JpaSpecificationExecutor<Product>`
+  - `Optional<Product> findBySku(String sku)`
+  - `Optional<Product> findBySlug(String slug)`
+  - `List<String> findTopProductNames(String query, Pageable pageable)`
+  - `List<String> findTopBrands(String query, Pageable pageable)`
 
 ---
 
 ## 10. Service Layer
 - **`ProductService`**:
   - `ProductResponse createProduct(ProductRequest request)`
-  - `ProductResponse getProductById(Long id)`
-  - `List<ProductResponse> getAllProducts()`
+  - `ProductResponse getProduct(Long id)`
+  - `List<ProductResponse> getAllProducts()` (unpaginated backward compatibility)
+  - `PageResponse<ProductResponse> searchProducts(q, category, brand, minPrice, maxPrice, inStock, featured, active, Pageable pageable)`
+  - `SearchSuggestionResponse getSearchSuggestions(String query)`
   - `ProductResponse updateProduct(Long id, ProductRequest request)`
   - `void deleteProduct(Long id)`
 
 ---
 
 ## 11. Controller Layer
-- `POST /api/v1/products` -> `createProduct()` -> HTTP `201 Created`
-- `GET /api/v1/products/{id}` -> `getProductById()` -> HTTP `200 OK`
-- `GET /api/v1/products` -> `getAllProducts()` -> HTTP `200 OK`
-- `PUT /api/v1/products/{id}` -> `updateProduct()` -> HTTP `200 OK`
+- `GET /api/v1/products` -> `searchProducts()` -> HTTP `200 OK` (`PageResponse<ProductResponse>`)
+- `GET /api/v1/products/all` -> `getAllProducts()` -> HTTP `200 OK` (`List<ProductResponse>`)
+- `GET /api/v1/products/search/suggestions` -> `getSearchSuggestions()` -> HTTP `200 OK` (`SearchSuggestionResponse`)
+- `GET /api/v1/products/{id}` -> `getProduct()` -> HTTP `200 OK` (`ProductResponse`)
+- `POST /api/v1/products` -> `createProduct()` -> HTTP `201 Created` (`ProductResponse`)
+- `PUT /api/v1/products/{id}` -> `updateProduct()` -> HTTP `200 OK` (`ProductResponse`)
 - `DELETE /api/v1/products/{id}` -> `deleteProduct()` -> HTTP `204 No Content`
 
 ---
@@ -112,108 +136,16 @@ com.amazonscale.product
 ## 12. Business Rules
 1. **Price Constraint**: Product prices must be positive (`BigDecimal > 0`).
 2. **Stock Non-Negativity**: Stock counts cannot be negative.
-3. **Active Flag Guard**: Products marked `active = false` cannot be purchased in cart/order checkouts (`ProductInactiveException`).
+3. **Category Validation**: If `categoryId` is supplied during product creation/update, the referenced category must exist.
+4. **Active Flag Guard**: Products marked `active = false` cannot be purchased in cart/order checkouts (`ProductInactiveException`).
 
 ---
 
-## 13. Validation
-- `name`: `@NotBlank`, `@Size(max = 255)`.
-- `price`: `@NotNull`, `@Positive`.
-- `stock`: `@NotNull`, `@PositiveOrZero`.
-- `categoryId`: `@NotNull`.
-- `sellerId`: `@NotNull`.
+## 13. Security & Access Control
+- `GET /api/v1/products/**` requests are configured with `permitAll()` in `SecurityConfig` to support guest browsing and public catalog discovery.
+- Write/update operations (`POST`, `PUT`, `DELETE`) require a valid JWT bearer token.
 
 ---
 
-## 14. Exception Handling
-- `ProductNotFoundException` -> HTTP `404 Not Found`.
-- `ProductInactiveException` -> HTTP `400 Bad Request`.
-- `ProductUnavailableException` -> HTTP `400 Bad Request`.
-
----
-
-## 15. Security
-Protected by Spring Security filter chain. Requires valid JWT Bearer token for request execution.
-
----
-
-## 16. API Reference
-
-### `POST /api/v1/products`
-- **Request**: `ProductRequest`
-- **Response**: `201 Created` (`ProductResponse`)
-
-### `GET /api/v1/products/{id}`
-- **Response**: `200 OK` (`ProductResponse`)
-
-### `GET /api/v1/products`
-- **Response**: `200 OK` (`List<ProductResponse>`)
-
-### `PUT /api/v1/products/{id}`
-- **Request**: `ProductRequest`
-- **Response**: `200 OK` (`ProductResponse`)
-
-### `DELETE /api/v1/products/{id}`
-- **Response**: `204 No Content`
-
----
-
-## 17. Request Flow
-Client Request -> `ProductController` -> `ProductServiceImpl` -> `ProductRepository` -> `ProductMapper` -> JSON Response.
-
----
-
-## 18. Sequence Diagram
-
-```mermaid
-sequenceDiagram
-    autonumber
-    actor Client
-    participant Ctrl as ProductController
-    participant Svc as ProductServiceImpl
-    participant Repo as ProductRepository
-
-    Client->>Ctrl: GET /api/v1/products/1
-    Ctrl->>Svc: getProductById(1)
-    Svc->>Repo: findById(1)
-    Repo-->>Svc: Product Entity
-    Svc-->>Ctrl: ProductResponse
-    Ctrl-->>Client: HTTP 200 OK (ProductResponse)
-```
-
----
-
-## 19. Mermaid Diagrams
-
-```mermaid
-graph TD
-    CreateReq[Product Creation Request] --> Val{Valid Input?}
-    Val -->|No| BadReq[HTTP 400 Bad Request]
-    Val -->|Yes| Save[Persist Product Entity]
-    Save --> Out[ProductResponse 201 Created]
-```
-
----
-
-## 20. Testing Overview
-Covered by JUnit 5 tests in `src/test/java/com/amazonscale/product`:
-- `ProductServiceImplTest`: Validates creation, lookup, status checks.
-- `ProductControllerTest`: Validates endpoint mappings via MockMvc.
-
----
-
-## 21. Known Limitations
-1. Stock maintained redundantly across Product and Inventory entities.
-2. Collection endpoint unpaginated.
-
----
-
-## 22. Future Improvements
-Refer to technical recommendations:
-- [Product Recommendations](recommendations/Product-Recommendations.md)
-
----
-
-## 23. References
-- [Architecture Documentation](Architecture.md)
-- [Database Schema Documentation](Database-Schema.md)
+## 14. Request Flow
+Client Search Request -> `ProductController` -> `ProductServiceImpl` -> `ProductSpecification` -> `ProductRepository` -> `PageResponse<ProductResponse>`.

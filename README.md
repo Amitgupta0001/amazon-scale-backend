@@ -1,8 +1,8 @@
 # AmazonScale Backend
 
-A production-grade, enterprise-scale e-commerce backend built with **Java 21** and **Spring Boot 4.0.7**, designed following clean architecture, package-by-feature modular design, and robust security practices.
+A production-grade, enterprise-scale e-commerce backend built with **Java 21** and **Spring Boot 4.0.7**, designed following clean architecture, package-by-feature modular design, dynamic JPA specification search pipelines, and robust security practices.
 
-AmazonScale implements core e-commerce services including JWT-based authentication, user profile management, hierarchical product taxonomy, inventory tracking, cart aggregation, wishlist management, tax/shipping-calculated order workflows, and payment gateway simulation.
+AmazonScale implements core e-commerce services including JWT-based authentication, user profile management, hierarchical product taxonomy, advanced product search/filtering/sorting/pagination, inventory tracking, cart aggregation, wishlist management, tax/shipping-calculated order workflows, and payment gateway simulation.
 
 ---
 
@@ -11,9 +11,9 @@ AmazonScale implements core e-commerce services including JWT-based authenticati
 Comprehensive, read-only system and architectural documentation is available in the [`docs/`](docs/) directory:
 
 - 🏗️ **[Architecture Guide](docs/Architecture.md)** — High-level system architecture, package structure, layering, and request lifecycles.
-- 🔐 **[Security Architecture](docs/Security.md)** — JWT authentication flow, Spring Security filter chain, RBAC, and password encoding.
-- 🗄️ **[Database Schema Design](docs/Database-Schema.md)** — Relational database schema, ER diagrams, foreign key relationships, and indexes.
-- 🔌 **[REST API Specification](docs/API-Design.md)** — Comprehensive API documentation, request/response contracts, and HTTP status codes.
+- 🔐 **[Security Architecture](docs/Security.md)** — JWT authentication flow, Spring Security filter chain, public GET permissions for catalog search, RBAC, and password encoding.
+- 🗄️ **[Database Schema Design](docs/Database-Schema.md)** — Relational database schema, ER diagrams, foreign key relationships, B-Tree indexes, and gallery collections.
+- 🔌 **[REST API Specification](docs/API-Design.md)** — Comprehensive API documentation, search query parameters, request/response contracts, and HTTP status codes.
 - 📂 **[Module Specifications](docs/README.md)** — Detailed domain specifications for [User](docs/User.md), [Product](docs/Product.md), [Category](docs/Category.md), [Inventory](docs/Inventory.md), [Cart](docs/Cart.md), [Wishlist](docs/Wishlist.md), [Order](docs/Order.md), and [Payment](docs/Payment.md).
 - 💡 **[Architectural Recommendations](docs/recommendations/)** — Documented technical debt and optimization blueprints.
 
@@ -26,11 +26,20 @@ Comprehensive, read-only system and architectural documentation is available in 
 - Role-Based Access Control (`ROLE_CUSTOMER`, `ROLE_SELLER`, `ROLE_ADMIN`)
 - BCrypt password encryption
 - Centralized security filter chain with custom JWT validation filters
+- Public read access for guest catalog browsing and searching (`GET /api/v1/products/**`, `GET /api/v1/categories/**`)
 - User profile retrieval and management
 
+### 🛍️ Advanced Search, Filtering, Sorting & Pagination (Phase 7)
+- **Dynamic Multi-Criteria Search**: Multi-field partial matching across product names, brands, descriptions, and categories via JPA Criteria Specifications (`ProductSpecification`)
+- **Server-Side Filtering**: Dynamic query predicates supporting category, brand, price range (`minPrice`/`maxPrice`), stock availability (`inStock`), featured status (`featured`), and active status (`active`)
+- **Flexible Sorting**: Multi-column sorting powered by Spring Data `Sort` (e.g. `price,asc`, `price,desc`, `createdAt,desc`, `name,asc`, `rating,desc`)
+- **Database-Level Pagination**: Page-based result slicing utilizing Spring Data `Pageable` wrapped in standardized `PageResponse<T>` payloads
+- **Live Search Autocomplete Suggestions**: Sub-10ms projection queries retrieving distinct top matching product titles, brand names, and categories (`GET /api/v1/products/search/suggestions`)
+
 ### 🏷️ Category & Product Catalog
-- Product CRUD operations with pricing, image URLs, and active status filtering
+- Extended product entity modeling with Category relationship (`@ManyToOne`), rating metrics, review counts, original price, discount percentages, SKU, slug, featured flag, thumbnail, and gallery image collections (`@ElementCollection`)
 - Hierarchical category taxonomy (parent-child relationships with self-parenting protection)
+- Unpaginated backward-compatible product endpoints (`GET /api/v1/products/all`) alongside paginated catalog endpoints
 - Product stock availability guards and active status indicators
 
 ### 📦 Inventory Management
@@ -69,7 +78,7 @@ Comprehensive, read-only system and architectural documentation is available in 
 | **Authentication & Security** | `com.amazonscale.security` | [Security.md](docs/Security.md) | ✅ Completed |
 | **User Management** | `com.amazonscale.user` | [User.md](docs/User.md) | ✅ Completed |
 | **Category Taxonomy** | `com.amazonscale.category` | [Category.md](docs/Category.md) | ✅ Completed |
-| **Product Catalog** | `com.amazonscale.product` | [Product.md](docs/Product.md) | ✅ Completed |
+| **Product Catalog & Search** | `com.amazonscale.product` | [Product.md](docs/Product.md) | ✅ Completed (Phase 7 Enhanced) |
 | **Inventory Management** | `com.amazonscale.inventory` | [Inventory.md](docs/Inventory.md) | ✅ Completed |
 | **Shopping Cart** | `com.amazonscale.cart` | [Cart.md](docs/Cart.md) | ✅ Completed |
 | **Wishlist Service** | `com.amazonscale.wishlists` | [Wishlist.md](docs/Wishlist.md) | ✅ Completed |
@@ -100,29 +109,35 @@ Comprehensive, read-only system and architectural documentation is available in 
 ```text
 amazon-scale-backend/
 ├── docker/
-│   ├── Dockerfile  -- not completed.
-│   └── docker-compose.yml --not implemented.
+│   ├── Dockerfile
+│   └── docker-compose.yml
 ├── docs/
 │   ├── Architecture.md
 │   ├── Database-Schema.md
 │   ├── API-Design.md
 │   ├── Security.md
-│   ├── recommendations/ --future enhancement
+│   ├── recommendations/
 │   └── [Module Docs...]
-├── scripts/
-│   ├── start.sh --not implemented
-│   └── stop.sh --not implemented
 ├── src/
 │   ├── main/
 │   │   ├── java/com/amazonscale/
 │   │   │   ├── cart/
 │   │   │   ├── category/
 │   │   │   ├── common/
+│   │   │   │   ├── exception/
+│   │   │   │   └── response/ (PageResponse, ErrorResponse)
 │   │   │   ├── config/
 │   │   │   ├── inventory/
 │   │   │   ├── order/
 │   │   │   ├── payment/
 │   │   │   ├── product/
+│   │   │   │   ├── controller/ (ProductController)
+│   │   │   │   ├── dto/ (ProductRequest, ProductResponse, SearchSuggestionResponse)
+│   │   │   │   ├── entity/ (Product)
+│   │   │   │   ├── mapper/ (ProductMapper)
+│   │   │   │   ├── repository/
+│   │   │   │   │   └── specification/ (ProductSpecification)
+│   │   │   │   └── service/ (ProductService, ProductServiceImpl)
 │   │   │   ├── security/
 │   │   │   ├── user/
 │   │   │   └── wishlists/
@@ -144,22 +159,7 @@ git clone https://github.com/Amitgupta0001/amazon-scale-backend.git
 cd amazon-scale-backend
 ```
 
-### 2. Run with Docker Compose (Recommended)
-
-Ensure Docker Daemon is running, then execute:
-
-```bash
-./scripts/start.sh
-# Or directly via docker-compose: (not available right now)
-docker-compose -f docker/docker-compose.yml up -d --build
-```
-
-To stop the services:
-```bash
-./scripts/stop.sh
-```
-
-### 3. Run Locally with Maven
+### 2. Run Locally with Maven
 
 #### Configure PostgreSQL Database
 Ensure PostgreSQL is running locally and update connection settings in `src/main/resources/application.properties`:
@@ -174,10 +174,10 @@ spring.datasource.password=your_password
 
 ```bash
 # Build the application
-mvn clean install
+./mvnw clean install
 
 # Run the Spring Boot service
-mvn spring-boot:run
+./mvnw spring-boot:run
 ```
 
 ---
@@ -199,23 +199,24 @@ http://localhost:8080/v3/api-docs
 
 ## 🧪 Testing Strategy
 
-The repository contains an extensive automated test suite covering units, integration, security filters, controller endpoints, and domain service logic using **JUnit 5**, **Mockito**, **MockMvc**, and an **H2 in-memory database**.
+The repository contains an extensive automated test suite covering units, integration, security filters, controller endpoints, dynamic JPA specifications, and domain service logic using **JUnit 5**, **Mockito**, **MockMvc**, and an **H2 in-memory database**.
 
-Run the full test suite with:
+Run the full test suite (406+ tests) with:
 
 ```bash
-mvn clean test
+./mvnw clean test
 ```
 
 ---
 
 ## 📐 Design & Architectural Principles
 
-- **Package-by-Feature Architecture:** Domain modules encapsulate their own entities, DTOs, controllers, services, and repositories.
+- **Package-by-Feature Architecture:** Domain modules encapsulate their own entities, DTOs, controllers, services, specifications, and repositories.
+- **Dynamic Predicate Construction:** Dynamic searches use decoupled JPA Criteria Specifications (`ProductSpecification`) avoiding native SQL string assembly.
 - **Clean Separation of Concerns:** Layered request pipeline (`Controller` -> `Service` -> `Repository`).
 - **Standardized Exception Handling:** `@RestControllerAdvice` converting all uncaught domain exceptions into uniform `ErrorResponse` payloads.
-- **DTO Pattern:** Explicit mapping between persistence entities and REST payload data transfer objects.
-- **Stateless Authentication:** JWT token generation and validation on every request without session state.
+- **DTO Pattern & Page Wrapping:** Explicit mapping between persistence entities and REST payload data transfer objects wrapped in `PageResponse<T>`.
+- **Stateless Authentication:** JWT token generation and validation with explicit public endpoints permitted for catalog discovery.
 
 ---
 
